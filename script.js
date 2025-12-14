@@ -1266,7 +1266,8 @@ const urlsToCache = [
     './index.html',
     './style.css',
     './script.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+    'https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600&display=swap'
 ];
 
 self.addEventListener('install', event => {
