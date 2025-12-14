@@ -1,88 +1,39 @@
 {
-    "name": "Notas Avançadas Pro",
-    "short_name": "NotasPro",
-    "description": "Aplicativo de notas avançado com cadernos e folhas",
-    "start_url": "./index.html",
-    "display": "standalone",
-    "background_color": "#667eea",
-    "theme_color": "#2c3e50",
-    "orientation": "any",
-    "icons": [
-        {
-            "src": "./assets/icons/icon-72.png",
-            "sizes": "72x72",
-            "type": "image/png"
-        },
-        {
-            "src": "./assets/icons/icon-96.png",
-            "sizes": "96x96",
-            "type": "image/png"
-        },
-        {
-            "src": "./assets/icons/icon-128.png",
-            "sizes": "128x128",
-            "type": "image/png"
-        },
-        {
-            "src": "./assets/icons/icon-144.png",
-            "sizes": "144x144",
-            "type": "image/png"
-        },
-        {
-            "src": "./assets/icons/icon-152.png",
-            "sizes": "152x152",
-            "type": "image/png"
-        },
-        {
-            "src": "./assets/icons/icon-192.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "./assets/icons/icon-384.png",
-            "sizes": "384x384",
-            "type": "image/png"
-        },
-        {
-            "src": "./assets/icons/icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png"
-        }
-    ],
-    "categories": ["productivity", "utilities", "education"],
-    "shortcuts": [
-        {
-            "name": "Nova Folha",
-            "short_name": "Folha",
-            "description": "Criar uma nova folha",
-            "url": "./index.html?action=new-sheet",
-            "icons": [{ "src": "./assets/icons/shortcut-96.png", "sizes": "96x96" }]
-        },
-        {
-            "name": "Novo Caderno",
-            "short_name": "Caderno",
-            "description": "Criar um novo caderno",
-            "url": "./index.html?action=new-notebook",
-            "icons": [{ "src": "./assets/icons/shortcut-96.png", "sizes": "96x96" }]
-        }
-    ],
-    "screenshots": [
-        {
-            "src": "./assets/screenshots/screenshot1.png",
-            "sizes": "1280x720",
-            "type": "image/png",
-            "form_factor": "wide"
-        },
-        {
-            "src": "./assets/screenshots/screenshot2.png",
-            "sizes": "750x1334",
-            "type": "image/png",
-            "form_factor": "narrow"
-        }
-    ],
-    "related_applications": [],
-    "prefer_related_applications": false,
-    "scope": "./",
-    "dir": "ltr",
-    "lang": "pt-BR"
+  "name": "Notas Avançadas",
+  "short_name": "Notas",
+  "description": "Aplicativo de notas com organização por cadernos e música ambiente",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#2c3e50",
+  "theme_color": "#3498db",
+  "orientation": "any",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nova Folha",
+      "short_name": "Nova",
+      "description": "Criar uma nova folha",
+      "url": "./?new=true"
+    },
+    {
+      "name": "Meus Cadernos",
+      "short_name": "Cadernos",
+      "description": "Ver todos os cadernos",
+      "url": "./?notebooks=true"
+    }
+  ]
 }

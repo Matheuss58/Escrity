@@ -61,7 +61,7 @@ body {
     gap: 10px;
 }
 
-.btn-primary, .btn-secondary, .btn-danger, .btn-save, .btn-install, .btn-sheet {
+.btn-primary, .btn-secondary, .btn-danger, .btn-save, .btn-install, .btn-sheet, .btn-music {
     border: none;
     padding: 10px 15px;
     border-radius: 5px;
@@ -78,6 +78,7 @@ body {
 .btn-primary {
     background: var(--primary-color);
     color: white;
+    width: 100%;
 }
 
 .btn-primary:hover {
@@ -118,11 +119,44 @@ body {
     font-size: 16px;
     margin-bottom: 5px;
     font-weight: 600;
+    padding-right: 60px;
 }
 
 .notebook-date {
     font-size: 12px;
     color: #bdc3c7;
+    margin-bottom: 10px;
+}
+
+/* Botões de ação do caderno - VISÍVEIS */
+.notebook-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.notebook-action-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s;
+    flex: 1;
+    justify-content: center;
+}
+
+.notebook-action-btn.edit:hover {
+    background: rgba(52, 152, 219, 0.5);
+}
+
+.notebook-action-btn.delete:hover {
+    background: rgba(231, 76, 60, 0.5);
 }
 
 .notebook-item::after {
@@ -146,6 +180,19 @@ body {
     margin-top: auto;
     padding-top: 20px;
     border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.btn-music {
+    background: #9b59b6;
+    color: white;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.btn-music:hover {
+    background: #8e44ad;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(155, 89, 182, 0.3);
 }
 
 .btn-install {
@@ -239,6 +286,7 @@ body {
     margin-bottom: 5px;
     font-weight: 600;
     color: var(--secondary-color);
+    padding-right: 30px;
 }
 
 .sheet-date {
@@ -256,12 +304,8 @@ body {
     color: #95a5a6;
     cursor: pointer;
     padding: 5px;
-    opacity: 0;
-    transition: opacity 0.3s, color 0.3s;
-}
-
-.sheet-item:hover .delete-sheet {
-    opacity: 1;
+    font-size: 12px;
+    transition: color 0.3s;
 }
 
 .sheet-item .delete-sheet:hover {
@@ -502,7 +546,403 @@ body {
 }
 
 .status-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
     font-style: italic;
+}
+
+/* Status da música */
+.music-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    background: rgba(155, 89, 182, 0.1);
+    border-radius: 4px;
+    font-size: 12px;
+    color: #9b59b6;
+}
+
+.music-status i {
+    font-size: 10px;
+}
+
+/* Sidebar de música */
+.music-sidebar {
+    width: 0;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.3s ease;
+    position: relative;
+    border-left: 1px solid rgba(255,255,255,0.1);
+}
+
+.music-sidebar.active {
+    width: 300px;
+}
+
+.music-header {
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.music-header h3 {
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #ecf0f1;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    padding: 5px;
+    font-size: 18px;
+    transition: color 0.3s;
+}
+
+.btn-close:hover {
+    color: white;
+}
+
+/* Player controls */
+.player-controls {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.now-playing {
+    margin-bottom: 20px;
+}
+
+.track-info {
+    margin-bottom: 15px;
+}
+
+.track-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-artist {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+}
+
+.player-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.player-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.player-btn:hover {
+    background: rgba(255,255,255,0.2);
+    transform: scale(1.1);
+}
+
+.play-btn {
+    background: #9b59b6;
+    width: 50px;
+    height: 50px;
+}
+
+.play-btn:hover {
+    background: #8e44ad;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.volume-control i {
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+}
+
+.volume-control input[type="range"] {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.2);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #9b59b6;
+    cursor: pointer;
+}
+
+/* Progress bar */
+.progress-bar {
+    margin-top: 10px;
+}
+
+.progress-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 5px;
+}
+
+.progress-slider {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.2);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.progress-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #9b59b6;
+    cursor: pointer;
+}
+
+/* Playlists */
+.playlists {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.playlists h4, .tracks-list h4, .music-upload h4 {
+    font-size: 14px;
+    margin-bottom: 15px;
+    color: rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.playlist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.playlist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.playlist-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.playlist-item.active {
+    background: rgba(155, 89, 182, 0.2);
+    border-left: 3px solid #9b59b6;
+}
+
+.playlist-item i {
+    font-size: 18px;
+    color: #9b59b6;
+    width: 24px;
+}
+
+.playlist-name {
+    font-weight: 500;
+    margin-bottom: 3px;
+    color: white;
+}
+
+.playlist-desc {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+}
+
+/* Tracks list */
+.tracks-list {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    flex: 1;
+    overflow-y: auto;
+}
+
+.tracks-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.track-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.track-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.track-item.playing {
+    background: rgba(155, 89, 182, 0.2);
+}
+
+.track-number {
+    width: 20px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    text-align: center;
+}
+
+.track-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.track-details .title {
+    font-size: 13px;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.track-details .artist {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+}
+
+.track-duration {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+}
+
+.track-item i.fa-play {
+    color: #9b59b6;
+    font-size: 12px;
+}
+
+/* Music upload */
+.music-upload {
+    padding: 20px;
+}
+
+.upload-area {
+    border: 2px dashed rgba(255,255,255,0.3);
+    border-radius: 10px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 15px;
+}
+
+.upload-area:hover {
+    border-color: #9b59b6;
+    background: rgba(155, 89, 182, 0.05);
+}
+
+.upload-area i {
+    font-size: 40px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 10px;
+}
+
+.upload-area p {
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 5px;
+}
+
+.upload-hint {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+}
+
+.uploaded-files {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.uploaded-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.uploaded-file i {
+    color: #9b59b6;
+}
+
+.uploaded-file .name {
+    flex: 1;
+    color: rgba(255,255,255,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.uploaded-file .delete {
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    padding: 2px;
+}
+
+.uploaded-file .delete:hover {
+    color: #e74c3c;
 }
 
 /* Modais */
@@ -585,6 +1025,46 @@ body {
 
 .modal-actions button {
     min-width: 100px;
+}
+
+/* Instruções de instalação */
+.install-instructions {
+    margin-bottom: 25px;
+    line-height: 1.6;
+}
+
+.install-instructions strong {
+    color: var(--secondary-color);
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.install-instructions ol {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.install-instructions li {
+    margin-bottom: 8px;
+    padding-left: 5px;
+}
+
+.install-instructions .note {
+    background: #e8f4fc;
+    padding: 12px 15px;
+    border-radius: 6px;
+    border-left: 4px solid var(--primary-color);
+    margin-top: 15px;
+    font-size: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.install-instructions .note i {
+    color: var(--primary-color);
+    margin-top: 2px;
 }
 
 /* Notificação */
@@ -673,7 +1153,9 @@ body {
     }
     
     .sidebar-footer {
-        display: none;
+        display: flex;
+        flex-direction: column;
+        width: auto;
     }
     
     .main-area {
@@ -708,6 +1190,16 @@ body {
         flex-direction: row;
         justify-content: space-between;
     }
+    
+    .music-sidebar.active {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 1001;
+        width: 100%;
+        max-width: 350px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -729,6 +1221,37 @@ body {
         right: 20px;
         left: 20px;
         max-width: none;
+    }
+    
+    .music-sidebar.active {
+        max-width: 100%;
+    }
+    
+    .music-header h3 {
+        font-size: 1rem;
+    }
+    
+    .playlists, .tracks-list, .music-upload {
+        padding: 15px;
+    }
+    
+    .status-bar {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .status-left, .status-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .notebook-actions {
+        flex-direction: column;
+    }
+    
+    .notebook-action-btn {
+        padding: 8px;
     }
 }
 
@@ -771,13 +1294,27 @@ body {
     background: #a8a8a8;
 }
 
+/* Scrollbar para sidebar de música */
+.music-sidebar ::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+
+.music-sidebar ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+}
+
+.music-sidebar ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.5);
+}
+
 /* Estilos específicos para modo de impressão */
 @media print {
     .sidebar,
     .sheets-sidebar,
     .editor-header,
     .status-bar,
-    .editor-tools {
+    .editor-tools,
+    .music-sidebar {
         display: none !important;
     }
     
