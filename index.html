@@ -287,5 +287,46 @@
     <audio id="audioPlayer" hidden></audio>
 
     <script src="script.js"></script>
+    <script>
+// Verificação de Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js')
+      .then(function(registration) {
+        console.log('ServiceWorker registrado com sucesso: ', registration.scope);
+        
+        // Verificar se há atualizações
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          console.log('Novo Service Worker encontrado!');
+          
+          newWorker.addEventListener('statechange', () => {
+            console.log('Novo Service Worker estado:', newWorker.state);
+            
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('Nova versão disponível!');
+              
+              // Mostrar notificação para atualizar
+              if (confirm('Uma nova versão está disponível. Atualizar agora?')) {
+                newWorker.postMessage({type: 'SKIP_WAITING'});
+                window.location.reload();
+              }
+            }
+          });
+        });
+      })
+      .catch(function(err) {
+        console.log('Falha ao registrar ServiceWorker: ', err);
+      });
+  });
+  
+  // Ouvir mensagens do Service Worker
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'SW_ACTIVATED') {
+      console.log('Service Worker ativado, versão:', event.data.version);
+    }
+  });
+}
+</script>
 </body>
 </html>
