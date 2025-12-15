@@ -1,18 +1,18 @@
 {
-  "name": "Notas Avançadas",
-  "short_name": "Notas",
-  "description": "Aplicativo de notas com organização por cadernos e música ambiente",
+  "name": "ESCRITY - Notas Avançadas",
+  "short_name": "ESCRITY",
+  "description": "Aplicativo de notas com organização por cadernos, música ambiente e sincronização",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#2c3e50",
   "theme_color": "#3498db",
-  "orientation": "portrait",
-  "categories": ["productivity", "utilities"],
+  "orientation": "any",
+  "categories": ["productivity", "utilities", "education"],
   "lang": "pt-BR",
   "dir": "ltr",
   "prefer_related_applications": false,
-  "scope": "/",
-  "id": "/",
+  "scope": "./",
+  "id": "./",
   
   "icons": [
     {
@@ -65,7 +65,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "platform": "wide",
-      "label": "Tela principal do aplicativo"
+      "label": "Tela principal do ESCRITY"
+    },
+    {
+      "src": "screenshots/screenshot2.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Visualização mobile"
     }
   ],
   
@@ -93,14 +100,61 @@
           "sizes": "96x96"
         }
       ]
+    },
+    {
+      "name": "Música Ambiente",
+      "short_name": "Música",
+      "description": "Abrir player de música",
+      "url": "./index.html?action=music",
+      "icons": [
+        {
+          "src": "icons/music-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   
   "related_applications": [],
   
-  "protocol_handlers": [],
+  "protocol_handlers": [
+    {
+      "protocol": "web+escry",
+      "url": "./index.html?data=%s"
+    }
+  ],
   
   "launch_handler": {
     "client_mode": "focus-existing"
-  }
+  },
+  
+  "handle_links": "preferred",
+  
+  "share_target": {
+    "action": "./index.html?share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "audio/*", "text/*"]
+        }
+      ]
+    }
+  },
+  
+  "file_handlers": [
+    {
+      "action": "./index.html?import",
+      "accept": {
+        "application/json": [".escry"],
+        "text/plain": [".txt", ".md"],
+        "application/pdf": [".pdf"]
+      }
+    }
+  ]
 }
