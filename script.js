@@ -5,10 +5,9 @@ class NotesApp {
         this.notebooks = [];
         this.deferredPrompt = null;
         this.editingNotebookId = null;
-        this.currentUserId = null;
-        this.isLocalMode = false;
+        this.isLocalMode = true; // Sempre modo local
         this.unsavedChanges = false;
-        this.spellcheckEnabled = true;
+        this.ignoredWords = new Set(); // Palavras ignoradas individualmente
         
         // Variáveis para música
         this.isMusicVisible = false;
@@ -28,6 +27,14 @@ class NotesApp {
             backgroundBlur: 0,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
+        };
+        
+        // Configurações de fonte
+        this.fontSettings = {
+            fontFamily: "'Inter', sans-serif",
+            fontSize: 18,
+            lineHeight: 1.8,
+            letterSpacing: 0
         };
         
         this.audio = document.getElementById('audioPlayer');
@@ -62,95 +69,31 @@ class NotesApp {
         // Carregar configurações de música
         this.loadMusicSettings();
         
-        // Esconder loading e mostrar tela de ID
+        // Carregar dados locais
+        await this.loadData();
+        
+        // Esconder loading e mostrar app
         setTimeout(() => {
             document.getElementById('loadingScreen').classList.add('fade-out');
             setTimeout(() => {
                 document.getElementById('loadingScreen').style.display = 'none';
-                this.showIdScreen();
+                this.enterApp();
             }, 500);
         }, 800);
     }
 
-    showIdScreen() {
-        console.log('Mostrando tela de ID...');
+    enterApp() {
+        console.log('Entrando no app...');
         
-        const idScreen = document.getElementById('idScreen');
-        const appContainer = document.getElementById('app-container');
-        
-        if (idScreen) {
-            idScreen.style.display = 'flex';
-            appContainer.style.display = 'none';
-        }
-        
-        // Verificar se há ID salvo
-        const savedId = localStorage.getItem('escry-id');
-        const savedMode = localStorage.getItem('escry-mode');
-        
-        if (savedId) {
-            document.getElementById('escryId').value = savedId;
-        }
-        
-        if (savedMode === 'local') {
-            const modeOptions = document.querySelectorAll('.mode-option');
-            modeOptions.forEach(option => {
-                option.classList.remove('active');
-                if (option.dataset.mode === 'local') {
-                    option.classList.add('active');
-                }
-            });
-        }
-        
-        // Focar no campo de ID
-        setTimeout(() => {
-            const idField = document.getElementById('escryId');
-            if (idField) {
-                idField.focus();
-                
-                // Evento Enter para continuar
-                idField.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        document.getElementById('enterBtn').click();
-                    }
-                });
-            }
-        }, 100);
-    }
-
-    async enterApp(escryId = null, mode = 'id') {
         try {
-            console.log('Entrando no app:', { escryId, mode });
-            
-            this.isLocalMode = mode === 'local';
-            this.currentUserId = escryId;
-            
-            // Salvar preferências
-            if (escryId) {
-                localStorage.setItem('escry-id', escryId);
-                localStorage.setItem('escry-mode', mode);
-            } else {
-                localStorage.removeItem('escry-id');
-                localStorage.setItem('escry-mode', 'local');
-            }
-            
-            // Carregar dados
-            await this.loadData();
-            
             // Atualizar interface
-            document.getElementById('currentUsername').textContent = 
-                escryId ? `ID: ${escryId}` : 'Modo Local';
+            document.getElementById('currentUsername').textContent = 'Modo Local';
             
             const syncStatus = document.getElementById('syncStatus');
-            if (this.isLocalMode) {
-                syncStatus.innerHTML = '<i class="fas fa-laptop"></i> Modo Local';
-                syncStatus.style.color = 'var(--warning-color)';
-            } else {
-                syncStatus.innerHTML = '<i class="fas fa-cloud"></i> Sincronizado';
-                syncStatus.style.color = '';
-            }
+            syncStatus.innerHTML = '<i class="fas fa-laptop"></i> Dispositivo Local';
+            syncStatus.style.color = 'var(--warning-color)';
             
-            // Esconder tela de ID e mostrar app
-            document.getElementById('idScreen').style.display = 'none';
+            // Mostrar app
             document.getElementById('app-container').style.display = 'flex';
             
             // Renderizar notebooks
@@ -163,19 +106,8 @@ class NotesApp {
                 this.createDefaultNotebook();
             }
             
-            // Sincronizar se online e com ID
-            if (!this.isLocalMode && escryId && navigator.onLine) {
-                setTimeout(() => {
-                    this.syncData();
-                }, 1000);
-            }
-            
             // Mostrar notificação
-            const welcomeMsg = this.isLocalMode 
-                ? 'Modo local ativado. Dados salvos apenas neste dispositivo.'
-                : `ID "${escryId}" carregado. Sincronizando...`;
-            
-            this.showNotification(welcomeMsg, 'success');
+            this.showNotification('ESCRITY iniciado em modo local. Dados salvos apenas neste dispositivo.', 'info');
             
             // Configurar intervalos
             this.setupIntervals();
@@ -185,47 +117,28 @@ class NotesApp {
             
         } catch (error) {
             console.error('Erro ao entrar no app:', error);
-            this.showNotification('Erro ao carregar dados. Tente novamente.', 'error');
-            this.showIdScreen();
+            this.showNotification('Erro ao carregar dados. Tente recarregar a página.', 'error');
         }
     }
 
     async loadData() {
-        console.log('Carregando dados...');
+        console.log('Carregando dados locais...');
         
-        if (this.isLocalMode) {
-            // Carregar dados locais
-            const localData = localStorage.getItem('escry-local-data');
-            if (localData) {
-                try {
-                    const data = JSON.parse(localData);
-                    this.notebooks = data.notebooks || [];
-                    console.log('Dados locais carregados:', this.notebooks.length);
-                } catch (e) {
-                    console.error('Erro ao parsear dados locais:', e);
-                    this.notebooks = [];
-                }
-            } else {
+        // Carregar dados locais
+        const localData = localStorage.getItem('escry-local-data');
+        if (localData) {
+            try {
+                const data = JSON.parse(localData);
+                this.notebooks = data.notebooks || [];
+                this.fontSettings = data.fontSettings || this.fontSettings;
+                this.ignoredWords = new Set(data.ignoredWords || []);
+                console.log('Dados locais carregados:', this.notebooks.length);
+            } catch (e) {
+                console.error('Erro ao parsear dados locais:', e);
                 this.notebooks = [];
             }
-        } else if (this.currentUserId) {
-            // Carregar dados por ID
-            const idKey = `escry-data-${this.currentUserId}`;
-            const idData = localStorage.getItem(idKey);
-            
-            if (idData) {
-                try {
-                    const data = JSON.parse(idData);
-                    this.notebooks = data.notebooks || [];
-                    console.log(`Dados do ID "${this.currentUserId}" carregados:`, this.notebooks.length);
-                } catch (e) {
-                    console.error('Erro ao parsear dados do ID:', e);
-                    this.notebooks = [];
-                }
-            } else {
-                this.notebooks = [];
-                console.log('Nenhum dado encontrado para este ID');
-            }
+        } else {
+            this.notebooks = [];
         }
     }
 
@@ -234,118 +147,31 @@ class NotesApp {
         
         const data = {
             notebooks: this.notebooks,
+            fontSettings: this.fontSettings,
+            ignoredWords: Array.from(this.ignoredWords),
             lastSave: new Date().toISOString(),
             version: '2.0'
         };
         
-        if (this.isLocalMode) {
-            // Salvar localmente
-            localStorage.setItem('escry-local-data', JSON.stringify(data));
-            console.log('Dados salvos localmente');
-        } else if (this.currentUserId) {
-            // Salvar por ID
-            const idKey = `escry-data-${this.currentUserId}`;
-            localStorage.setItem(idKey, JSON.stringify(data));
-            console.log(`Dados salvos para ID "${this.currentUserId}"`);
-            
-            // Também salvar no cache para sincronização
-            if (navigator.onLine) {
-                this.saveToSyncCache(data);
-            }
-        }
+        // Salvar localmente
+        localStorage.setItem('escry-local-data', JSON.stringify(data));
+        console.log('Dados salvos localmente');
         
         this.updateLastSaved();
         this.unsavedChanges = false;
         document.getElementById('saveBtn').classList.remove('unsaved');
     }
 
-    saveToSyncCache(data) {
-        // Simular envio para servidor
-        // Em produção, aqui seria uma chamada API real
-        const syncKey = `escry-sync-${this.currentUserId}`;
-        const syncData = {
-            ...data,
-            lastSync: Date.now(),
-            userId: this.currentUserId
-        };
-        
-        localStorage.setItem(syncKey, JSON.stringify(syncData));
-        console.log('Dados salvos no cache de sincronização');
-    }
-
-    async syncData() {
-        if (this.isLocalMode || !this.currentUserId || !navigator.onLine) {
-            return;
-        }
-        
-        try {
-            console.log('Sincronizando dados...');
-            
-            // Salvar dados atuais primeiro
-            this.saveData();
-            
-            // Simular sincronização com servidor
-            const syncKey = `escry-sync-${this.currentUserId}`;
-            const syncData = localStorage.getItem(syncKey);
-            
-            if (syncData) {
-                try {
-                    const remoteData = JSON.parse(syncData);
-                    
-                    // Verificar se há dados mais recentes
-                    const localKey = `escry-data-${this.currentUserId}`;
-                    const localData = localStorage.getItem(localKey);
-                    
-                    if (localData) {
-                        const local = JSON.parse(localData);
-                        
-                        // Priorizar dados mais recentes (simples merge)
-                        if (remoteData.lastSync > (local.lastSync || 0)) {
-                            this.notebooks = remoteData.notebooks;
-                            this.saveData();
-                            this.renderNotebooks();
-                            
-                            if (this.currentNotebook) {
-                                this.selectNotebook(this.currentNotebook.id);
-                            }
-                            
-                            this.showNotification('Dados sincronizados do servidor', 'info');
-                        }
-                    }
-                } catch (e) {
-                    console.error('Erro ao processar dados sincronizados:', e);
-                }
-            }
-            
-            // Atualizar status
-            const syncStatus = document.getElementById('syncStatus');
-            syncStatus.innerHTML = '<i class="fas fa-check-circle"></i> Sincronizado';
-            syncStatus.style.color = '';
-            
-            console.log('Sincronização completa');
-            
-        } catch (error) {
-            console.error('Erro na sincronização:', error);
-            const syncStatus = document.getElementById('syncStatus');
-            syncStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Erro na sincronização';
-            syncStatus.style.color = 'var(--warning-color)';
-        }
-    }
-
-    logout() {
-        if (confirm('Tem certeza que deseja sair? Todas as alterações serão salvas.')) {
-            // Salvar antes de sair
-            this.saveCurrentContent();
-            this.saveData();
-            
-            // Limpar
+    clearLocalData() {
+        if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
+            localStorage.removeItem('escry-local-data');
+            localStorage.removeItem('escry-music');
+            this.notebooks = [];
             this.currentNotebook = null;
             this.currentSheet = null;
-            this.currentUserId = null;
-            this.notebooks = [];
-            
-            // Mostrar tela de ID
-            this.showIdScreen();
+            this.renderNotebooks();
+            this.clearEditor();
+            this.showNotification('Todos os dados foram limpos.', 'info');
         }
     }
 
@@ -355,7 +181,7 @@ class NotesApp {
         const defaultNotebook = {
             id: 'notebook-default-' + Date.now(),
             name: 'Meu Primeiro Caderno',
-            cover: 'default',
+            cover: 'default.jpg', // Referência direta à capa padrão
             customCover: null,
             created: new Date().toISOString(),
             updated: new Date().toISOString(),
@@ -364,7 +190,7 @@ class NotesApp {
                 title: 'Bem-vindo ao ESCRITY',
                 content: `
                     <h1>Bem-vindo ao ESCRITY! ✨</h1>
-                    <p>Seu editor de notas sincronizado está pronto para uso.</p>
+                    <p>Seu editor de notas local está pronto para uso.</p>
                     <h2>🎯 Comece por aqui:</h2>
                     <ul>
                         <li><strong>Novo Caderno:</strong> Clique no botão "+" na barra lateral</li>
@@ -372,6 +198,7 @@ class NotesApp {
                         <li><strong>Formatação:</strong> Use os botões na barra superior</li>
                         <li><strong>Imagens:</strong> Clique no botão de imagem para inserir</li>
                         <li><strong>Personalização:</strong> Clique em "Personalizar" para mudar o fundo da folha</li>
+                        <li><strong>Fonte:</strong> Clique em "Fonte" para alterar aparência do texto</li>
                     </ul>
                     <p><em>Dica: Use Ctrl+S para salvar rapidamente!</em></p>
                 `,
@@ -382,7 +209,8 @@ class NotesApp {
                     backgroundImage: null,
                     backgroundOpacity: 0.1,
                     backgroundBlur: 0
-                }
+                },
+                fontSettings: { ...this.fontSettings }
             }]
         };
         
@@ -439,12 +267,13 @@ class NotesApp {
         const data = {
             app: 'ESCRITY',
             version: '2.0',
-            userId: this.currentUserId || 'local',
-            mode: this.isLocalMode ? 'local' : 'id',
+            mode: 'local',
             date: new Date().toISOString(),
             data: {
                 notebooks: this.notebooks,
-                music: this.tracks.uploaded
+                music: this.tracks.uploaded,
+                fontSettings: this.fontSettings,
+                ignoredWords: Array.from(this.ignoredWords)
             }
         };
         
@@ -523,6 +352,16 @@ class NotesApp {
             if (this.pendingRestoreData.data.music) {
                 this.tracks.uploaded = this.pendingRestoreData.data.music;
                 this.saveMusicSettings();
+            }
+            
+            // Restaurar configurações de fonte
+            if (this.pendingRestoreData.data.fontSettings) {
+                this.fontSettings = this.pendingRestoreData.data.fontSettings;
+            }
+            
+            // Restaurar palavras ignoradas
+            if (this.pendingRestoreData.data.ignoredWords) {
+                this.ignoredWords = new Set(this.pendingRestoreData.data.ignoredWords);
             }
             
             // Salvar dados
@@ -738,6 +577,7 @@ class NotesApp {
         // Garantir que tenha sheets
         if (!notebook.sheets || notebook.sheets.length === 0) {
             notebook.sheets = [this.createNewSheet('Folha 1')];
+            this.saveData();
         }
         
         // Atualizar interface
@@ -747,7 +587,9 @@ class NotesApp {
         this.renderSheets();
         
         // Selecionar a primeira folha
-        this.selectSheet(notebook.sheets[0].id);
+        if (notebook.sheets.length > 0) {
+            this.selectSheet(notebook.sheets[0].id);
+        }
     }
 
     selectSheet(id) {
@@ -768,6 +610,13 @@ class NotesApp {
         // Carregar conteúdo
         const editor = document.getElementById('editor');
         editor.innerHTML = sheet.content || '<p>Comece a escrever aqui...</p>';
+        
+        // Aplicar configurações de fonte da folha
+        if (sheet.fontSettings) {
+            this.applyFontSettings(sheet.fontSettings);
+        } else {
+            this.applyFontSettings(this.fontSettings);
+        }
         
         // Aplicar personalização
         if (sheet.customization) {
@@ -796,7 +645,7 @@ class NotesApp {
         const newNotebook = {
             id,
             name,
-            cover: 'default',
+            cover: 'default.jpg',
             customCover: null,
             created: new Date().toISOString(),
             updated: new Date().toISOString(),
@@ -825,7 +674,8 @@ class NotesApp {
                 backgroundBlur: 0,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
-            }
+            },
+            fontSettings: { ...this.fontSettings }
         };
     }
 
@@ -875,6 +725,9 @@ class NotesApp {
         const content = document.getElementById('editor').innerHTML;
         this.currentSheet.content = content;
         this.currentSheet.updated = new Date().toISOString();
+        
+        // Salvar configurações de fonte atuais
+        this.currentSheet.fontSettings = { ...this.fontSettings };
         
         // Extrair imagens do conteúdo
         this.extractImagesFromContent();
@@ -930,6 +783,9 @@ class NotesApp {
             this.currentSheet.content = content;
             this.currentSheet.updated = new Date().toISOString();
             this.extractImagesFromContent();
+            
+            // Salvar configurações de fonte atuais
+            this.currentSheet.fontSettings = { ...this.fontSettings };
         }
     }
 
@@ -943,12 +799,9 @@ class NotesApp {
         
         if (coverType === 'custom' && customCover) {
             coverImg.src = customCover;
-            coverImg.style.background = 'none';
         } else {
-            // Capa padrão com gradiente
-            coverImg.src = '';
-            coverImg.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            coverImg.style.backgroundSize = 'cover';
+            // Usar capa padrão
+            coverImg.src = 'assets/capas/default.jpg';
         }
         
         this.saveData();
@@ -962,7 +815,7 @@ class NotesApp {
         const coverOptions = document.querySelectorAll('.cover-option');
         coverOptions.forEach(option => {
             option.classList.remove('active');
-            if (option.dataset.cover === (this.currentNotebook?.cover || 'default')) {
+            if (option.dataset.cover === (this.currentNotebook?.cover === 'default.jpg' ? 'default' : 'custom')) {
                 option.classList.add('active');
             }
         });
@@ -994,7 +847,7 @@ class NotesApp {
                 return;
             }
         } else {
-            this.updateCover('default', null);
+            this.updateCover('default.jpg', null);
             this.showNotification('Capa padrão aplicada!');
         }
         
@@ -1070,6 +923,7 @@ class NotesApp {
         editor.style.backgroundColor = 'white';
         editor.style.backgroundBlur = 'none';
         editor.style.opacity = '1';
+        editor.style.filter = 'none';
     }
 
     showNotification(message, type = 'success') {
@@ -1182,24 +1036,80 @@ class NotesApp {
         this.checkUnsavedChanges();
     }
 
-    toggleSpellcheck() {
-        this.spellcheckEnabled = !this.spellcheckEnabled;
-        const editor = document.getElementById('editor');
-        const button = document.getElementById('spellcheckToggle');
+    ignoreCurrentWord() {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
         
-        editor.spellcheck = this.spellcheckEnabled;
+        const range = selection.getRangeAt(0);
+        const selectedText = range.toString().trim();
         
-        if (this.spellcheckEnabled) {
-            button.classList.remove('inactive');
-            button.title = 'Ortografia (Ativado)';
-            button.innerHTML = '<i class="fas fa-spell-check"></i>';
-            this.showNotification('Verificação ortográfica ativada', 'info');
+        if (!selectedText) {
+            // Se nada está selecionado, selecionar a palavra atual
+            const editor = document.getElementById('editor');
+            const wordRange = this.getWordRange(range);
+            if (wordRange) {
+                const word = wordRange.toString();
+                if (word) {
+                    this.ignoredWords.add(word.toLowerCase());
+                    this.showNotification(`Palavra "${word}" ignorada`, 'info');
+                    
+                    // Adicionar classe para esconder underline vermelho
+                    const span = document.createElement('span');
+                    span.className = 'ignored-word';
+                    span.textContent = word;
+                    wordRange.deleteContents();
+                    wordRange.insertNode(span);
+                    
+                    this.saveData();
+                }
+            }
         } else {
-            button.classList.add('inactive');
-            button.title = 'Ortografia (Desativado)';
-            button.innerHTML = '<i class="fas fa-spell-check"></i>';
-            this.showNotification('Verificação ortográfica desativada', 'warning');
+            // Ignorar texto selecionado
+            this.ignoredWords.add(selectedText.toLowerCase());
+            this.showNotification(`Palavra "${selectedText}" ignorada`, 'info');
+            
+            // Adicionar classe para esconder underline vermelho
+            const span = document.createElement('span');
+            span.className = 'ignored-word';
+            span.textContent = selectedText;
+            range.deleteContents();
+            range.insertNode(span);
+            
+            this.saveData();
         }
+    }
+
+    getWordRange(range) {
+        if (!range.collapsed) return range;
+        
+        const editor = document.getElementById('editor');
+        const text = editor.textContent;
+        const startOffset = range.startOffset;
+        const container = range.startContainer;
+        
+        if (container.nodeType !== Node.TEXT_NODE) return null;
+        
+        let start = startOffset;
+        let end = startOffset;
+        
+        // Encontrar início da palavra
+        while (start > 0 && !/\s/.test(text[start - 1])) {
+            start--;
+        }
+        
+        // Encontrar fim da palavra
+        while (end < text.length && !/\s/.test(text[end])) {
+            end++;
+        }
+        
+        if (start < end) {
+            const wordRange = document.createRange();
+            wordRange.setStart(container, start);
+            wordRange.setEnd(container, end);
+            return wordRange;
+        }
+        
+        return null;
     }
 
     // ========== PERSONALIZAÇÃO DE FOLHA ==========
@@ -1331,6 +1241,77 @@ class NotesApp {
         this.saveData();
         this.showNotification('Folha personalizada!', 'success');
         document.getElementById('customizeSheetModal').classList.remove('active');
+    }
+
+    // ========== CONFIGURAÇÕES DE FONTE ==========
+
+    showFontSettingsModal() {
+        if (!this.currentSheet) {
+            this.showNotification('Selecione uma folha primeiro', 'error');
+            return;
+        }
+        
+        const modal = document.getElementById('fontSettingsModal');
+        modal.classList.add('active');
+        
+        // Carregar configurações atuais
+        const settings = this.currentSheet.fontSettings || this.fontSettings;
+        
+        document.getElementById('fontFamily').value = settings.fontFamily;
+        document.getElementById('fontSize').value = settings.fontSize;
+        document.getElementById('lineHeight').value = settings.lineHeight;
+        document.getElementById('letterSpacing').value = settings.letterSpacing;
+        
+        this.updateFontPreview();
+    }
+
+    updateFontPreview() {
+        const previewArea = document.getElementById('fontPreviewArea');
+        const fontFamily = document.getElementById('fontFamily').value;
+        const fontSize = document.getElementById('fontSize').value;
+        const lineHeight = document.getElementById('lineHeight').value;
+        const letterSpacing = document.getElementById('letterSpacing').value;
+        
+        previewArea.style.fontFamily = fontFamily;
+        previewArea.style.fontSize = `${fontSize}px`;
+        previewArea.style.lineHeight = lineHeight;
+        previewArea.style.letterSpacing = `${letterSpacing}px`;
+        
+        // Atualizar valores exibidos
+        document.getElementById('fontSizeValue').textContent = `${fontSize}px`;
+        document.getElementById('lineHeightValue').textContent = lineHeight;
+        document.getElementById('letterSpacingValue').textContent = `${letterSpacing}px`;
+    }
+
+    applyFontSettings(settings = null) {
+        const editor = document.getElementById('editor');
+        
+        if (settings) {
+            this.fontSettings = { ...settings };
+        } else {
+            this.fontSettings = {
+                fontFamily: document.getElementById('fontFamily').value,
+                fontSize: parseInt(document.getElementById('fontSize').value),
+                lineHeight: parseFloat(document.getElementById('lineHeight').value),
+                letterSpacing: parseFloat(document.getElementById('letterSpacing').value)
+            };
+        }
+        
+        editor.style.fontFamily = this.fontSettings.fontFamily;
+        editor.style.fontSize = `${this.fontSettings.fontSize}px`;
+        editor.style.lineHeight = this.fontSettings.lineHeight;
+        editor.style.letterSpacing = `${this.fontSettings.letterSpacing}px`;
+        
+        // Salvar nas configurações da folha atual
+        if (this.currentSheet) {
+            this.currentSheet.fontSettings = { ...this.fontSettings };
+            this.saveData();
+        }
+        
+        if (!settings) {
+            this.showNotification('Configurações de fonte aplicadas!', 'success');
+            document.getElementById('fontSettingsModal').classList.remove('active');
+        }
     }
 
     // ========== IMAGENS ==========
@@ -2006,49 +1987,9 @@ class NotesApp {
     setupEventListeners() {
         console.log('Configurando eventos...');
         
-        // ===== TELA DE ID =====
-        document.getElementById('enterBtn').onclick = () => {
-            const escryId = document.getElementById('escryId').value.trim();
-            const mode = document.querySelector('.mode-option.active').dataset.mode;
-            
-            if (mode === 'id' && !escryId) {
-                this.showNotification('Digite um ID ESCRITY ou selecione Modo Local', 'error');
-                return;
-            }
-            
-            this.enterApp(escryId || null, mode);
-        };
-
-        document.getElementById('skipBtn').onclick = () => {
-            this.enterApp(null, 'local');
-        };
-
-        // Selecionar modo
-        document.querySelectorAll('.mode-option').forEach(option => {
-            option.addEventListener('click', () => {
-                document.querySelectorAll('.mode-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                option.classList.add('active');
-            });
-        });
-
         // ===== APP =====
-        document.getElementById('logoutBtn').onclick = () => this.logout();
+        document.getElementById('clearDataBtn').onclick = () => this.clearLocalData();
         
-        document.getElementById('syncNowBtn').onclick = () => {
-            if (this.isLocalMode) {
-                this.showNotification('Modo local ativado. Use um ID para sincronizar.', 'warning');
-            } else if (!this.currentUserId) {
-                this.showNotification('Nenhum ID configurado', 'error');
-            } else if (!navigator.onLine) {
-                this.showNotification('Sem conexão com a internet', 'error');
-            } else {
-                this.syncData();
-                this.showNotification('Sincronizando...', 'info');
-            }
-        };
-
         // ===== NOTAS =====
         document.getElementById('newNotebook').onclick = () => {
             document.getElementById('notebookModal').classList.add('active');
@@ -2152,7 +2093,7 @@ class NotesApp {
             this.checkUnsavedChanges();
         });
         document.getElementById('imageBtn').addEventListener('click', () => this.showImageModal());
-        document.getElementById('spellcheckToggle').addEventListener('click', () => this.toggleSpellcheck());
+        document.getElementById('ignoreSpellBtn').addEventListener('click', () => this.ignoreCurrentWord());
 
         // Contador de caracteres e palavras
         const editor = document.getElementById('editor');
@@ -2162,6 +2103,26 @@ class NotesApp {
             this.updateImageCount();
             this.checkUnsavedChanges();
         });
+
+        // Configurações de fonte
+        document.getElementById('fontSettingsBtn').onclick = () => {
+            this.showFontSettingsModal();
+        };
+
+        // Sliders de fonte
+        document.getElementById('fontFamily').addEventListener('change', () => this.updateFontPreview());
+        document.getElementById('fontSize').addEventListener('input', () => this.updateFontPreview());
+        document.getElementById('lineHeight').addEventListener('input', () => this.updateFontPreview());
+        document.getElementById('letterSpacing').addEventListener('input', () => this.updateFontPreview());
+
+        // Aplicar configurações de fonte
+        document.getElementById('applyFontBtn').onclick = () => {
+            this.applyFontSettings();
+        };
+
+        document.getElementById('cancelFontBtn').onclick = () => {
+            document.getElementById('fontSettingsModal').classList.remove('active');
+        };
 
         // Capa
         document.getElementById('changeCoverBtn').onclick = () => {
@@ -2505,6 +2466,7 @@ class NotesApp {
                 document.getElementById('restoreModal').classList.remove('active');
                 document.getElementById('imageModal').classList.remove('active');
                 document.getElementById('customizeSheetModal').classList.remove('active');
+                document.getElementById('fontSettingsModal').classList.remove('active');
                 document.getElementById('coverModal').classList.remove('active');
                 document.getElementById('installInstructionsModal').classList.remove('active');
                 
@@ -2568,6 +2530,12 @@ class NotesApp {
                 e.preventDefault();
                 this.formatParagraph();
             }
+            
+            // Ctrl+Shift+I para ignorar palavra
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
+                e.preventDefault();
+                this.ignoreCurrentWord();
+            }
         });
 
         // Fechar modais clicando fora
@@ -2602,20 +2570,6 @@ class NotesApp {
             document.querySelector('#musicStatus i').style.color = 'var(--danger-color)';
         });
 
-        // Monitorar conexão para sincronização
-        window.addEventListener('online', () => {
-            if (!this.isLocalMode && this.currentUserId) {
-                this.showNotification('Conexão restaurada. Sincronizando...', 'info');
-                this.syncData();
-                document.getElementById('syncStatus').innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizando...';
-            }
-        });
-
-        window.addEventListener('offline', () => {
-            this.showNotification('Sem conexão com a internet', 'warning');
-            document.getElementById('syncStatus').innerHTML = '<i class="fas fa-wifi-slash"></i> Offline';
-        });
-
         // Suporte a toque para melhor UX mobile
         document.addEventListener('touchstart', () => {}, {passive: true});
         
@@ -2644,11 +2598,11 @@ class NotesApp {
         setTimeout(() => {
             const loadingScreen = document.getElementById('loadingScreen');
             if (loadingScreen && loadingScreen.style.display === 'flex') {
-                console.log('Timeout do loading screen, forçando tela de ID');
+                console.log('Timeout do loading screen, forçando entrada no app');
                 loadingScreen.classList.add('fade-out');
                 setTimeout(() => {
                     loadingScreen.style.display = 'none';
-                    this.showIdScreen();
+                    this.enterApp();
                 }, 500);
             }
         }, 8000); // 8 segundos de timeout
@@ -2691,15 +2645,6 @@ class NotesApp {
         
         // Verificar modificações não salvas
         setInterval(() => this.checkUnsavedChanges(), 5000);
-        
-        // Sincronização automática (se online e com ID)
-        if (!this.isLocalMode && this.currentUserId) {
-            setInterval(() => {
-                if (navigator.onLine) {
-                    this.syncData();
-                }
-            }, 60000); // A cada 1 minuto
-        }
     }
 }
 

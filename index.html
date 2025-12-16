@@ -38,58 +38,6 @@
         </div>
     </div>
 
-    <!-- Tela de ID ESCRITY -->
-    <div id="idScreen" class="login-screen">
-        <div class="login-container">
-            <div class="login-header">
-                <h1><i class="fas fa-book"></i> ESCRITY</h1>
-                <p>Seu editor de notas sincronizado</p>
-            </div>
-            
-            <div class="login-form">
-                <div class="input-group">
-                    <label for="escryId">
-                        <i class="fas fa-id-card"></i> ID ESCRITY (opcional)
-                    </label>
-                    <input type="text" id="escryId" placeholder="Ex: 0000" maxlength="20">
-                    <small>Digite seu ID para sincronizar entre dispositivos</small>
-                </div>
-                
-                <div class="mode-selector">
-                    <div class="mode-option" data-mode="local">
-                        <i class="fas fa-laptop"></i>
-                        <h3>Modo Local</h3>
-                        <p>Dados salvos apenas neste dispositivo</p>
-                    </div>
-                    <div class="mode-option active" data-mode="id">
-                        <i class="fas fa-cloud"></i>
-                        <h3>Com ID</h3>
-                        <p>Sincroniza entre todos seus dispositivos</p>
-                    </div>
-                </div>
-                
-                <div class="login-actions">
-                    <button id="enterBtn" class="btn-primary">
-                        <i class="fas fa-sign-in-alt"></i> Continuar
-                    </button>
-                    <button id="skipBtn" class="btn-secondary">
-                        <i class="fas fa-forward"></i> Pular e usar local
-                    </button>
-                </div>
-                
-                <div class="login-info">
-                    <p><i class="fas fa-info-circle"></i> <strong>Como funciona:</strong></p>
-                    <ul>
-                        <li>Sem ID: Dados salvos apenas neste dispositivo</li>
-                        <li>Com ID: Sincroniza automaticamente entre todos dispositivos</li>
-                        <li>O ID pode ser qualquer palavra ou número</li>
-                        <li>Use o mesmo ID em todos seus dispositivos</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div id="app-container" class="app-container" style="display: none;">
         <!-- Sidebar para cadernos -->
         <aside class="sidebar" id="mainSidebar">
@@ -99,14 +47,14 @@
                         <i class="fas fa-user-circle"></i>
                     </div>
                     <div class="user-details">
-                        <span class="username" id="currentUsername">Usuário Local</span>
+                        <span class="username" id="currentUsername">Modo Local</span>
                         <span class="user-status" id="syncStatus">
-                            <i class="fas fa-check-circle"></i> Modo Local
+                            <i class="fas fa-check-circle"></i> Dispositivo Local
                         </span>
                     </div>
                 </div>
-                <button id="logoutBtn" class="btn-logout" title="Sair / Trocar ID">
-                    <i class="fas fa-sign-out-alt"></i>
+                <button id="clearDataBtn" class="btn-logout" title="Limpar dados">
+                    <i class="fas fa-trash-alt"></i>
                 </button>
             </div>
             
@@ -195,6 +143,9 @@
                                 <button id="customizeSheetBtn" class="btn-customize" title="Personalizar folha">
                                     <i class="fas fa-paint-brush"></i> Personalizar
                                 </button>
+                                <button id="fontSettingsBtn" class="btn-customize" title="Configurações de fonte">
+                                    <i class="fas fa-font"></i> Fonte
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -210,15 +161,12 @@
                                 <button id="listUlBtn" title="Lista não ordenada"><i class="fas fa-list-ul"></i></button>
                                 <button id="listOlBtn" title="Lista ordenada"><i class="fas fa-list-ol"></i></button>
                                 <button id="imageBtn" title="Inserir imagem"><i class="fas fa-image"></i></button>
-                                <button id="spellcheckToggle" class="spellcheck-btn" title="Ortografia (Ativado)">
-                                    <i class="fas fa-spell-check"></i>
+                                <button id="ignoreSpellBtn" class="spellcheck-btn" title="Ignorar palavra">
+                                    <i class="fas fa-eye-slash"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="action-tools">
-                            <button id="syncNowBtn" class="btn-sync" title="Sincronizar agora">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
                             <button id="deleteSheetBtn" class="btn-danger" title="Excluir folha atual">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -349,7 +297,7 @@
             </div>
             <div class="modal-actions">
                 <button id="cancelEditBtn" class="btn-secondary">Cancelar</button>
-                <button id="saveEditBtn" class="btn-primary">Salvar</button>
+                                <button id="saveEditBtn" class="btn-primary">Salvar</button>
             </div>
         </div>
     </div>
@@ -578,6 +526,65 @@
             <div class="modal-actions">
                 <button id="cancelCustomizeBtn" class="btn-secondary">Cancelar</button>
                 <button id="applyCustomizeBtn" class="btn-primary">
+                    <i class="fas fa-check"></i> Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de configurações de fonte -->
+    <div id="fontSettingsModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-font"></i> Configurações de Fonte</h3>
+            <div class="modal-body">
+                <div class="font-options">
+                    <div class="font-option-group">
+                        <label for="fontFamily">Família da Fonte:</label>
+                        <select id="fontFamily">
+                            <option value="'Inter', sans-serif">Inter (Padrão)</option>
+                            <option value="'Arial', sans-serif">Arial</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="'Georgia', serif">Georgia</option>
+                            <option value="'Courier New', monospace">Courier New</option>
+                            <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+                        </select>
+                    </div>
+                    
+                    <div class="font-option-group">
+                        <label for="fontSize">Tamanho da Fonte:</label>
+                        <div class="slider-container">
+                            <input type="range" id="fontSize" min="12" max="36" step="1" value="18">
+                            <span id="fontSizeValue">18px</span>
+                        </div>
+                    </div>
+                    
+                    <div class="font-option-group">
+                        <label for="lineHeight">Espaçamento entre Linhas:</label>
+                        <div class="slider-container">
+                            <input type="range" id="lineHeight" min="1.2" max="2.5" step="0.1" value="1.8">
+                            <span id="lineHeightValue">1.8</span>
+                        </div>
+                    </div>
+                    
+                    <div class="font-option-group">
+                        <label for="letterSpacing">Espaçamento entre Letras:</label>
+                        <div class="slider-container">
+                            <input type="range" id="letterSpacing" min="-1" max="5" step="0.1" value="0">
+                            <span id="letterSpacingValue">0px</span>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <h4><i class="fas fa-eye"></i> Prévia</h4>
+                        <div class="font-preview-area" id="fontPreviewArea">
+                            O rato roeu a roupa do rei de Roma.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="cancelFontBtn" class="btn-secondary">Cancelar</button>
+                <button id="applyFontBtn" class="btn-primary">
                     <i class="fas fa-check"></i> Aplicar
                 </button>
             </div>
