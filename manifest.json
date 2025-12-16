@@ -1,7 +1,7 @@
 {
-  "name": "ESCRITY - Notas Avançadas",
+  "name": "ESCRITY - Editor de Notas",
   "short_name": "ESCRITY",
-  "description": "Aplicativo de notas com organização por cadernos, música ambiente e sincronização",
+  "description": "Editor de notas avançado com sincronização por ID, personalização e música ambiente",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#2c3e50",
