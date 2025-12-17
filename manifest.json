@@ -60,16 +60,22 @@
   
   "shortcuts": [
     {
-      "name": "Nova Folha",
-      "short_name": "Nova",
-      "description": "Criar uma nova página",
-      "url": "./index.html?action=new"
+      "name": "Novo Caderno",
+      "short_name": "Novo",
+      "description": "Criar um novo caderno",
+      "url": "./index.html?action=new-notebook"
     },
     {
       "name": "Meus Cadernos",
       "short_name": "Cadernos",
       "description": "Ver todos os cadernos",
       "url": "./index.html?action=notebooks"
+    },
+    {
+      "name": "Escrever Agora",
+      "short_name": "Escrever",
+      "description": "Ir direto para a escrita",
+      "url": "./index.html?action=write"
     }
   ],
   
@@ -80,5 +86,10 @@
       "protocol": "web+escry",
       "url": "./index.html?data=%s"
     }
-  ]
+  ],
+  
+  "display_override": ["standalone", "minimal-ui"],
+  "edge_side_panel": {
+    "preferred_width": 350
+  }
 }

@@ -1,7 +1,7 @@
-// Service Worker para ESCRITY
-const CACHE_VERSION = 'escry-v2.1';
-const APP_CACHE = 'app-cache-v2';
-const DATA_CACHE = 'data-cache-v2';
+// Service Worker para ESCRITY (Versão 3.0)
+const CACHE_VERSION = 'escry-v3.0';
+const APP_CACHE = 'app-cache-v3';
+const DATA_CACHE = 'data-cache-v3';
 
 // Arquivos essenciais para cache
 const APP_SHELL_FILES = [
@@ -19,7 +19,7 @@ const APP_SHELL_FILES = [
 
 // Instalação
 self.addEventListener('install', event => {
-  console.log('[Service Worker] Instalando ESCRITY v2.1...');
+  console.log('[Service Worker] Instalando ESCRITY v3.0...');
   
   event.waitUntil(
     caches.open(APP_CACHE)
@@ -35,7 +35,7 @@ self.addEventListener('install', event => {
 
 // Ativação
 self.addEventListener('activate', event => {
-  console.log('[Service Worker] Ativando ESCRITY v2.1...');
+  console.log('[Service Worker] Ativando ESCRITY v3.0...');
   
   event.waitUntil(
     Promise.all([
@@ -145,39 +145,37 @@ self.addEventListener('message', event => {
       caches.delete(APP_CACHE);
       caches.delete(DATA_CACHE);
       break;
+      
+    case 'GET_CACHE_INFO':
+      caches.open(APP_CACHE).then(cache => {
+        cache.keys().then(keys => {
+          event.ports[0].postMessage({
+            cacheSize: keys.length,
+            version: CACHE_VERSION
+          });
+        });
+      });
+      break;
   }
 });
 
-// Background sync (simples)
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-data') {
-    console.log('[Service Worker] Sincronizando em background...');
-  }
-});
-
-// Push notifications
+// Push notifications (opcional)
 self.addEventListener('push', event => {
+  if (!event.data) return;
+  
+  const data = event.data.json();
   const options = {
-    body: 'ESCRITY: Suas histórias estão seguras.',
+    body: data.body || 'ESCRITY: Suas histórias estão seguras.',
     icon: './icons/icon-192x192.png',
     badge: './icons/icon-72x72.png',
     vibrate: [100, 50, 100],
     data: {
-      url: './'
+      url: './',
+      date: new Date()
     }
   };
   
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      if (data.title) options.title = data.title;
-      if (data.body) options.body = data.body;
-    } catch (e) {
-      options.body = event.data.text();
-    }
-  }
-  
-  event.waitUntil(self.registration.showNotification('ESCRITY', options));
+  event.waitUntil(self.registration.showNotification(data.title || 'ESCRITY', options));
 });
 
 self.addEventListener('notificationclick', event => {
@@ -199,4 +197,13 @@ self.addEventListener('notificationclick', event => {
       }
     })
   );
+});
+
+// Background sync para backup
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-backup') {
+    console.log('[Service Worker] Sincronizando backup em background...');
+    // Aqui você poderia sincronizar com um servidor se tivesse
+    event.waitUntil(Promise.resolve());
+  }
 });

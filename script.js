@@ -6,20 +6,13 @@ class EscrityApp {
         this.deferredPrompt = null;
         this.editingNotebookId = null;
         this.unsavedChanges = false;
-        this.ignoredWords = new Set();
         this.currentTextColor = '#2c3e50';
         
         // Música
         this.isMusicVisible = false;
-        this.currentLibrary = 'focus';
         this.currentTrack = null;
         this.isPlaying = false;
-        this.tracks = {
-            focus: [],
-            creative: [],
-            ambient: [],
-            uploaded: []
-        };
+        this.tracks = [];
         
         // Personalização
         this.currentCustomization = {
@@ -48,9 +41,6 @@ class EscrityApp {
         
         // Mostrar loading
         document.getElementById('loadingScreen').style.display = 'flex';
-        
-        // Carregar músicas
-        await this.loadDefaultMusic();
         
         // Configurar eventos
         this.setupEventListeners();
@@ -122,7 +112,6 @@ class EscrityApp {
                 const data = JSON.parse(localData);
                 this.notebooks = data.notebooks || [];
                 this.fontSettings = data.fontSettings || this.fontSettings;
-                this.ignoredWords = new Set(data.ignoredWords || []);
                 this.currentTextColor = data.textColor || '#2c3e50';
                 
                 console.log(`ESCRITY: ${this.notebooks.length} cadernos carregados`);
@@ -141,11 +130,9 @@ class EscrityApp {
         const data = {
             notebooks: this.notebooks,
             fontSettings: this.fontSettings,
-            ignoredWords: Array.from(this.ignoredWords),
             textColor: this.currentTextColor,
             lastSave: new Date().toISOString(),
-            version: '2.0',
-            dataSize: this.calculateDataSize()
+            version: '3.0'
         };
         
         // Salvar localmente
@@ -157,52 +144,42 @@ class EscrityApp {
         document.getElementById('saveBtn').classList.remove('unsaved');
         document.getElementById('saveBtn').innerHTML = '<i class="fas fa-save"></i> <span class="save-text">Guardado</span>';
         
-        // Backup automático periódico
+        // Criar backup automático
         this.createAutoBackup();
     }
 
-    calculateDataSize() {
-        const data = JSON.stringify(this.notebooks);
-        const sizeInBytes = new Blob([data]).size;
-        const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
-        return `${sizeInMB} MB`;
-    }
-
     createAutoBackup() {
-        const today = new Date().toDateString();
-        const lastBackup = localStorage.getItem('escry-last-backup');
+        const today = new Date().toISOString().split('T')[0];
+        const backupId = `backup-${today}-${Date.now()}`;
         
-        if (lastBackup !== today) {
-            const backupData = {
-                app: 'ESCRITY',
-                version: '2.0',
-                date: new Date().toISOString(),
-                data: {
-                    notebooks: this.notebooks,
-                    settings: {
-                        fontSettings: this.fontSettings,
-                        textColor: this.currentTextColor
-                    }
-                }
-            };
-            
-            localStorage.setItem('escry-auto-backup-' + new Date().toISOString().split('T')[0], JSON.stringify(backupData));
-            localStorage.setItem('escry-last-backup', today);
-            
-            // Manter apenas últimos 7 backups
-            this.cleanOldBackups();
-        }
+        const backupData = {
+            id: backupId,
+            app: 'ESCRITY',
+            version: '3.0',
+            date: new Date().toISOString(),
+            notebooks: this.notebooks,
+            settings: {
+                fontSettings: this.fontSettings,
+                textColor: this.currentTextColor
+            }
+        };
+        
+        // Salvar backup
+        localStorage.setItem(`escry-backup-${backupId}`, JSON.stringify(backupData));
+        
+        // Manter apenas últimos 30 backups
+        this.cleanOldBackups();
     }
 
     cleanOldBackups() {
-        const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('escry-auto-backup-'));
+        const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('escry-backup-'));
         
-        if (backupKeys.length > 7) {
+        if (backupKeys.length > 30) {
             // Ordenar por data (mais antigo primeiro)
             backupKeys.sort();
             
             // Remover backups antigos
-            const toRemove = backupKeys.slice(0, backupKeys.length - 7);
+            const toRemove = backupKeys.slice(0, backupKeys.length - 30);
             toRemove.forEach(key => localStorage.removeItem(key));
         }
     }
@@ -215,6 +192,12 @@ class EscrityApp {
                 localStorage.removeItem('escry-data');
                 localStorage.removeItem('escry-music');
                 localStorage.removeItem('escry-settings');
+                
+                // Remover apenas backups, manter música
+                const keysToRemove = Object.keys(localStorage).filter(key => 
+                    key.startsWith('escry-backup-')
+                );
+                keysToRemove.forEach(key => localStorage.removeItem(key));
                 
                 this.notebooks = [];
                 this.currentNotebook = null;
@@ -234,7 +217,7 @@ class EscrityApp {
     createDefaultNotebook() {
         const defaultNotebook = {
             id: 'notebook-' + Date.now(),
-            name: 'Minhas Histórias',
+            name: 'Meu Primeiro Caderno',
             cover: 'default.jpg',
             customCover: null,
             color: '#1a1a2e',
@@ -242,33 +225,8 @@ class EscrityApp {
             updated: new Date().toISOString(),
             sheets: [{
                 id: 'sheet-' + Date.now(),
-                title: 'Bem-vindo',
-                content: `
-                    <h1 style="text-align: center; margin-bottom: 2em;">📖 Bem-vindo ao ESCRITY</h1>
-                    
-                    <p style="font-size: 1.2em; line-height: 1.8;">
-                        Este é seu espaço pessoal para guardar histórias, ideias, emoções e tudo que merece ser lembrado.
-                    </p>
-                    
-                    <div style="background: rgba(52, 152, 219, 0.1); padding: 2em; border-radius: 10px; margin: 2em 0;">
-                        <h3>✨ Comece sua jornada:</h3>
-                        <ul style="margin-top: 1em;">
-                            <li><strong>Novo Caderno:</strong> Clique no "+" na barra lateral</li>
-                            <li><strong>Nova Folha:</strong> Selecione um caderno e clique no "+" de folhas</li>
-                            <li><strong>Escreva livremente:</strong> Use as ferramentas para formatar seu texto</li>
-                            <li><strong>Personalize:</strong> Ajuste o ambiente de escrita no botão "Ambiente"</li>
-                            <li><strong>Atmosfera:</strong> Ative sons ambiente para concentração</li>
-                        </ul>
-                    </div>
-                    
-                    <blockquote style="border-left: 4px solid #3498db; padding-left: 1.5em; font-style: italic; color: #7f8c8d;">
-                        "As melhores histórias não são escritas, são vividas através das palavras."
-                    </blockquote>
-                    
-                    <p style="margin-top: 3em; text-align: center; color: #95a5a6;">
-                        <small>Seus dados são guardados apenas neste dispositivo. Totalmente privado e seguro.</small>
-                    </p>
-                `,
+                title: 'Primeira Página',
+                content: '<p class="placeholder">Comece a escrever sua história aqui...</p>',
                 created: new Date().toISOString(),
                 updated: new Date().toISOString(),
                 images: [],
@@ -313,16 +271,25 @@ class EscrityApp {
             const div = document.createElement('div');
             div.className = `notebook-item ${this.currentNotebook?.id === notebook.id ? 'active' : ''}`;
             div.style.borderLeftColor = notebook.color || '#3498db';
+            div.style.borderColor = notebook.color || '#3498db';
+            
+            const sheetCount = notebook.sheets ? notebook.sheets.length : 0;
+            const lastUpdated = this.formatDate(notebook.updated);
             
             div.innerHTML = `
-                <h3>${this.escapeHtml(notebook.name)}</h3>
-                <div class="notebook-date">${this.formatDate(notebook.updated)}</div>
+                <div class="notebook-content">
+                    <h3>${this.escapeHtml(notebook.name)}</h3>
+                    <div class="notebook-meta">
+                        <span class="sheet-count">${sheetCount} ${sheetCount === 1 ? 'folha' : 'folhas'}</span>
+                        <span class="notebook-date">${lastUpdated}</span>
+                    </div>
+                </div>
                 <div class="notebook-actions">
                     <button class="notebook-action-btn edit" data-id="${notebook.id}">
-                        <i class="fas fa-edit"></i> Renomear
+                        <i class="fas fa-edit"></i>
                     </button>
                     <button class="notebook-action-btn delete" data-id="${notebook.id}">
-                        <i class="fas fa-trash"></i> Excluir
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             `;
@@ -369,12 +336,13 @@ class EscrityApp {
         
         container.innerHTML = '';
         
-        this.currentNotebook.sheets.forEach((sheet, index) => {
+        this.currentNotebook.sheets.forEach((sheet) => {
             const div = document.createElement('div');
             div.className = `sheet-item-compact ${this.currentSheet?.id === sheet.id ? 'active' : ''}`;
             div.innerHTML = `
                 <i class="fas fa-file-lines"></i>
-                <span>${this.escapeHtml(sheet.title)}</span>
+                <span class="sheet-title">${this.escapeHtml(sheet.title)}</span>
+                <span class="sheet-date-small">${this.formatDate(sheet.updated, true)}</span>
             `;
             
             div.onclick = () => {
@@ -1222,25 +1190,6 @@ class EscrityApp {
 
     // ========== MÚSICA ==========
 
-    async loadDefaultMusic() {
-        try {
-            const config = JSON.parse(document.getElementById('default-music-config').textContent);
-            this.tracks = {
-                focus: config.focus || [],
-                creative: config.creative || [],
-                ambient: config.ambient || [],
-                uploaded: []
-            };
-            
-            // Renderizar trilhas
-            this.renderTracks();
-            
-        } catch (error) {
-            console.error('ESCRITY: Erro ao carregar músicas:', error);
-            this.tracks = { focus: [], creative: [], ambient: [], uploaded: [] };
-        }
-    }
-
     setupAudioEvents() {
         this.audio.addEventListener('timeupdate', () => this.updateProgress());
         this.audio.addEventListener('loadedmetadata', () => {
@@ -1250,52 +1199,20 @@ class EscrityApp {
         this.audio.addEventListener('play', () => this.updatePlayState(true));
         this.audio.addEventListener('pause', () => this.updatePlayState(false));
         this.audio.addEventListener('error', () => {
-            this.showNotification('Erro de áudio', 'Não foi possível reproduzir a trilha.', 'error');
-        });
-    }
-
-    renderTracks() {
-        // Renderizar trilhas de foco
-        const focusContainer = document.getElementById('focusTracks');
-        focusContainer.innerHTML = this.tracks.focus.map((track, index) => `
-            <div class="track-item-library ${this.currentTrack?.id === track.id ? 'playing' : ''}" data-id="${track.id}">
-                <div class="track-number">${index + 1}</div>
-                <div class="track-details-library">
-                    <div class="title">${track.title}</div>
-                    <div class="artist">${track.artist}</div>
-                </div>
-                <div class="track-duration-library">${track.duration}</div>
-            </div>
-        `).join('');
-
-        // Renderizar outras bibliotecas
-        ['creative', 'ambient'].forEach(library => {
-            const container = document.getElementById(library + 'Tracks');
-            if (container) {
-                container.innerHTML = this.tracks[library].map((track, index) => `
-                    <div class="track-item-library ${this.currentTrack?.id === track.id ? 'playing' : ''}" data-id="${track.id}">
-                        <div class="track-number">${index + 1}</div>
-                        <div class="track-details-library">
-                            <div class="title">${track.title}</div>
-                            <div class="artist">${track.artist}</div>
-                        </div>
-                        <div class="track-duration-library">${track.duration}</div>
-                    </div>
-                `).join('');
-            }
+            this.showNotification('Erro de áudio', 'Não foi possível reproduzir a música.', 'error');
         });
     }
 
     playTrack(track) {
         this.currentTrack = track;
         
-        // Tentar carregar a música
+        // Carregar a música
         this.audio.src = track.url;
         
         this.audio.play().then(() => {
             // Atualizar UI
             document.getElementById('currentTrackTitle').textContent = track.title;
-            document.getElementById('currentTrackArtist').textContent = track.artist;
+            document.getElementById('currentTrackArtist').textContent = track.artist || 'Importado';
             document.getElementById('playPause').innerHTML = '<i class="fas fa-pause"></i>';
             this.isPlaying = true;
             
@@ -1308,7 +1225,7 @@ class EscrityApp {
             
         }).catch(e => {
             console.error('ESCRITY: Erro ao reproduzir:', e);
-            this.showNotification('Erro de reprodução', 'Não foi possível tocar a trilha selecionada.', 'error');
+            this.showNotification('Erro de reprodução', 'Não foi possível tocar a música.', 'error');
         });
     }
 
@@ -1330,12 +1247,9 @@ class EscrityApp {
     }
 
     playPause() {
-        if (!this.currentTrack) {
-            // Tocar a primeira trilha da biblioteca atual
-            const tracks = this.tracks[this.currentLibrary];
-            if (tracks && tracks.length > 0) {
-                this.playTrack(tracks[0]);
-            }
+        if (!this.currentTrack && this.tracks.length > 0) {
+            // Tocar a primeira trilha
+            this.playTrack(this.tracks[0]);
             return;
         }
         
@@ -1349,26 +1263,24 @@ class EscrityApp {
     }
 
     playNextTrack() {
-        const tracks = this.tracks[this.currentLibrary];
-        if (!tracks || tracks.length === 0) return;
+        if (this.tracks.length === 0) return;
         
-        const currentIndex = tracks.findIndex(t => t.id === this.currentTrack?.id);
-        const nextIndex = (currentIndex + 1) % tracks.length;
+        const currentIndex = this.tracks.findIndex(t => t.id === this.currentTrack?.id);
+        const nextIndex = (currentIndex + 1) % this.tracks.length;
         
-        if (tracks[nextIndex]) {
-            this.playTrack(tracks[nextIndex]);
+        if (this.tracks[nextIndex]) {
+            this.playTrack(this.tracks[nextIndex]);
         }
     }
 
     playPrevTrack() {
-        const tracks = this.tracks[this.currentLibrary];
-        if (!tracks || tracks.length === 0) return;
+        if (this.tracks.length === 0) return;
         
-        const currentIndex = tracks.findIndex(t => t.id === this.currentTrack?.id);
-        const prevIndex = currentIndex <= 0 ? tracks.length - 1 : currentIndex - 1;
+        const currentIndex = this.tracks.findIndex(t => t.id === this.currentTrack?.id);
+        const prevIndex = currentIndex <= 0 ? this.tracks.length - 1 : currentIndex - 1;
         
-        if (tracks[prevIndex]) {
-            this.playTrack(tracks[prevIndex]);
+        if (this.tracks[prevIndex]) {
+            this.playTrack(this.tracks[prevIndex]);
         }
     }
 
@@ -1424,25 +1336,6 @@ class EscrityApp {
         }
     }
 
-    switchLibrary(libraryName) {
-        this.currentLibrary = libraryName;
-        
-        // Atualizar tabs
-        document.querySelectorAll('.library-tab').forEach(tab => {
-            tab.classList.remove('active');
-            if (tab.dataset.library === libraryName) {
-                tab.classList.add('active');
-            }
-        });
-        
-        // Mostrar trilhas da biblioteca selecionada
-        document.querySelectorAll('.tracks-list').forEach(list => {
-            list.style.display = 'none';
-        });
-        
-        document.getElementById(libraryName + 'Tracks').style.display = 'block';
-    }
-
     handleMusicUpload(files) {
         Array.from(files).forEach(file => {
             if (!file.type.startsWith('audio/')) {
@@ -1458,19 +1351,19 @@ class EscrityApp {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const track = {
-                    id: 'uploaded-' + Date.now() + Math.random().toString(36).substr(2, 9),
+                    id: 'track-' + Date.now() + Math.random().toString(36).substr(2, 9),
                     title: file.name.replace(/\.[^/.]+$/, ""),
                     artist: 'Importado',
                     duration: '--:--',
                     url: e.target.result,
-                    type: 'uploaded'
+                    type: 'audio'
                 };
                 
-                this.tracks.uploaded.push(track);
+                this.tracks.push(track);
                 this.saveMusicSettings();
                 this.renderUploadedTracks();
                 
-                this.showNotification('Trilha importada', `"${file.name}" foi adicionada à sua biblioteca.`, 'success');
+                this.showNotification('Música importada', `"${file.name}" foi adicionada à sua biblioteca.`, 'success');
             };
             reader.readAsDataURL(file);
         });
@@ -1480,19 +1373,45 @@ class EscrityApp {
         const container = document.getElementById('uploadedTracksList');
         if (!container) return;
         
-        container.innerHTML = this.tracks.uploaded.map((track, index) => `
-            <div class="track-item-library ${this.currentTrack?.id === track.id ? 'playing' : ''}" data-id="${track.id}">
+        if (this.tracks.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" id="emptyTracksState">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Nenhuma música importada</p>
+                    <p class="hint">Importe suas músicas para criar atmosfera</p>
+                </div>
+            `;
+            document.getElementById('trackCount').textContent = '0 músicas';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        this.tracks.forEach((track, index) => {
+            const div = document.createElement('div');
+            div.className = `track-item-library ${this.currentTrack?.id === track.id ? 'playing' : ''}`;
+            div.dataset.id = track.id;
+            
+            div.innerHTML = `
                 <div class="track-number">${index + 1}</div>
                 <div class="track-details-library">
-                    <div class="title">${track.title}</div>
-                    <div class="artist">${track.artist}</div>
+                    <div class="title">${this.escapeHtml(track.title)}</div>
+                    <div class="artist">${track.artist || 'Importado'}</div>
                 </div>
-                <div class="track-duration-library">${track.duration}</div>
+                <div class="track-duration-library">${track.duration || '--:--'}</div>
                 <button class="delete-track" data-id="${track.id}" title="Remover">
                     <i class="fas fa-times"></i>
                 </button>
-            </div>
-        `).join('');
+            `;
+            
+            div.onclick = (e) => {
+                if (!e.target.closest('.delete-track')) {
+                    this.playTrack(track);
+                }
+            };
+            
+            container.appendChild(div);
+        });
         
         // Adicionar eventos de exclusão
         container.querySelectorAll('.delete-track').forEach(btn => {
@@ -1503,24 +1422,14 @@ class EscrityApp {
             };
         });
         
-        // Adicionar eventos de clique
-        container.querySelectorAll('.track-item-library').forEach(item => {
-            item.onclick = (e) => {
-                if (!e.target.closest('.delete-track')) {
-                    const trackId = item.dataset.id;
-                    const track = this.tracks.uploaded.find(t => t.id === trackId);
-                    if (track) {
-                        this.playTrack(track);
-                    }
-                }
-            };
-        });
+        // Atualizar contador
+        document.getElementById('trackCount').textContent = `${this.tracks.length} ${this.tracks.length === 1 ? 'música' : 'músicas'}`;
     }
 
     deleteUploadedTrack(trackId) {
-        const trackIndex = this.tracks.uploaded.findIndex(track => track.id === trackId);
+        const trackIndex = this.tracks.findIndex(track => track.id === trackId);
         if (trackIndex !== -1) {
-            const track = this.tracks.uploaded[trackIndex];
+            const track = this.tracks[trackIndex];
             
             // Se a música que está sendo excluída está tocando
             if (this.currentTrack && this.currentTrack.id === trackId) {
@@ -1529,18 +1438,38 @@ class EscrityApp {
                 this.updatePlayState(false);
             }
             
-            this.tracks.uploaded.splice(trackIndex, 1);
+            this.tracks.splice(trackIndex, 1);
             this.saveMusicSettings();
             this.renderUploadedTracks();
             
-            this.showNotification('Trilha removida', 'A trilha foi excluída da sua biblioteca.', 'info');
+            this.showNotification('Música removida', 'A música foi excluída da sua biblioteca.', 'info');
         }
+    }
+
+    deleteAllTracks() {
+        if (this.tracks.length === 0) return;
+        
+        this.showConfirm(
+            'Limpar todas as músicas',
+            'Tem certeza que deseja remover todas as músicas importadas?',
+            () => {
+                this.tracks = [];
+                if (this.currentTrack) {
+                    this.audio.pause();
+                    this.currentTrack = null;
+                    this.updatePlayState(false);
+                }
+                this.saveMusicSettings();
+                this.renderUploadedTracks();
+                
+                this.showNotification('Biblioteca limpa', 'Todas as músicas foram removidas.', 'info');
+            }
+        );
     }
 
     saveMusicSettings() {
         const data = {
-            tracks: this.tracks.uploaded,
-            currentLibrary: this.currentLibrary,
+            tracks: this.tracks,
             volume: this.audio.volume
         };
         localStorage.setItem('escry-music', JSON.stringify(data));
@@ -1552,8 +1481,7 @@ class EscrityApp {
         if (savedMusic) {
             try {
                 const data = JSON.parse(savedMusic);
-                this.tracks.uploaded = data.tracks || [];
-                this.currentLibrary = data.currentLibrary || 'focus';
+                this.tracks = data.tracks || [];
                 this.audio.volume = data.volume || 0.5;
                 
                 // Atualizar volume
@@ -1561,9 +1489,6 @@ class EscrityApp {
                 
                 // Renderizar trilhas importadas
                 this.renderUploadedTracks();
-                
-                // Ativar biblioteca salva
-                this.switchLibrary(this.currentLibrary);
                 
             } catch (e) {
                 console.error('ESCRITY: Erro ao carregar configurações de música:', e);
@@ -1587,97 +1512,206 @@ class EscrityApp {
         }
     }
 
+    // ========== BACKUP E RESTAURAÇÃO ==========
+
+    showBackupModal() {
+        document.getElementById('backupModal').classList.add('active');
+    }
+
+    showRestoreModal() {
+        document.getElementById('restoreModal').classList.add('active');
+        this.loadBackupsList();
+    }
+
+    createManualBackup() {
+        const backupData = {
+            id: `backup-manual-${Date.now()}`,
+            app: 'ESCRITY',
+            version: '3.0',
+            date: new Date().toISOString(),
+            notebooks: this.notebooks,
+            settings: {
+                fontSettings: this.fontSettings,
+                textColor: this.currentTextColor
+            }
+        };
+        
+        localStorage.setItem(`escry-backup-${backupData.id}`, JSON.stringify(backupData));
+        
+        this.showNotification('Backup criado', 'Sua cópia de segurança foi salva com sucesso.', 'success');
+    }
+
+    loadBackupsList() {
+        const container = document.getElementById('backupsList');
+        const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('escry-backup-'));
+        
+        if (backupKeys.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <p>Nenhum backup encontrado</p>
+                </div>
+            `;
+            document.getElementById('confirmRestoreBtn').disabled = true;
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        backupKeys.forEach(key => {
+            try {
+                const backupData = JSON.parse(localStorage.getItem(key));
+                const date = new Date(backupData.date);
+                const dateStr = date.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const notebookCount = backupData.notebooks ? backupData.notebooks.length : 0;
+                const sheetCount = backupData.notebooks ? 
+                    backupData.notebooks.reduce((total, nb) => total + (nb.sheets ? nb.sheets.length : 0), 0) : 0;
+                
+                const div = document.createElement('div');
+                div.className = 'backup-item';
+                div.dataset.key = key;
+                
+                div.innerHTML = `
+                    <div class="backup-info">
+                        <div class="backup-title">
+                            <i class="fas fa-archive"></i>
+                            <span>Backup ${backupData.id.includes('manual') ? 'Manual' : 'Automático'}</span>
+                        </div>
+                        <div class="backup-details">
+                            <span class="backup-date">${dateStr}</span>
+                            <span class="backup-stats">${notebookCount} caderno(s), ${sheetCount} folha(s)</span>
+                        </div>
+                    </div>
+                    <div class="backup-actions">
+                        <button class="backup-action-btn restore" title="Restaurar">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button class="backup-action-btn delete" title="Excluir backup">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                div.querySelector('.restore').onclick = () => {
+                    this.selectBackupForRestoration(key);
+                };
+                
+                div.querySelector('.delete').onclick = () => {
+                    this.deleteBackup(key);
+                };
+                
+                container.appendChild(div);
+            } catch (e) {
+                console.error('ESCRITY: Erro ao processar backup:', e);
+            }
+        });
+        
+        document.getElementById('confirmRestoreBtn').disabled = true;
+    }
+
+    selectBackupForRestoration(key) {
+        document.querySelectorAll('.backup-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        
+        const selectedItem = document.querySelector(`.backup-item[data-key="${key}"]`);
+        if (selectedItem) {
+            selectedItem.classList.add('selected');
+            document.getElementById('confirmRestoreBtn').disabled = false;
+            this.selectedBackupKey = key;
+        }
+    }
+
+    restoreBackup() {
+        if (!this.selectedBackupKey) return;
+        
+        this.showConfirm(
+            'Restaurar Backup',
+            'Tem certeza? Todos os dados atuais serão substituídos.',
+            () => {
+                try {
+                    const backupData = JSON.parse(localStorage.getItem(this.selectedBackupKey));
+                    
+                    if (backupData && backupData.notebooks) {
+                        this.notebooks = backupData.notebooks;
+                        this.fontSettings = backupData.settings?.fontSettings || this.fontSettings;
+                        this.currentTextColor = backupData.settings?.textColor || '#2c3e50';
+                        
+                        this.saveData();
+                        this.renderNotebooks();
+                        
+                        if (this.notebooks.length > 0) {
+                            this.selectNotebook(this.notebooks[0].id);
+                        } else {
+                            this.clearEditor();
+                        }
+                        
+                        document.getElementById('restoreModal').classList.remove('active');
+                        this.showNotification('Backup restaurado', 'Seus dados foram recuperados com sucesso.', 'success');
+                    }
+                } catch (e) {
+                    console.error('ESCRITY: Erro ao restaurar backup:', e);
+                    this.showNotification('Erro', 'Não foi possível restaurar o backup.', 'error');
+                }
+            }
+        );
+    }
+
+    deleteBackup(key) {
+        this.showConfirm(
+            'Excluir Backup',
+            'Tem certeza que deseja excluir este backup?',
+            () => {
+                localStorage.removeItem(key);
+                this.loadBackupsList();
+                this.showNotification('Backup excluído', 'O backup foi removido permanentemente.', 'info');
+            }
+        );
+    }
+
     // ========== EXPORTAÇÃO ==========
 
     showExportModal() {
-        if (!this.currentSheet) {
-            this.showNotification('Selecione uma folha', 'Escolha uma folha para exportar.', 'warning');
+        if (!this.currentNotebook) {
+            this.showNotification('Selecione um caderno', 'Escolha um caderno para exportar.', 'warning');
             return;
         }
         
         document.getElementById('exportModal').classList.add('active');
     }
 
-    exportSheet(format) {
-        if (!this.currentSheet) return;
+    exportNotebook(format) {
+        if (!this.currentNotebook) return;
         
-        const editor = document.getElementById('editor');
-        const content = editor.innerHTML;
-        const title = this.currentSheet.title;
+        const notebook = this.currentNotebook;
         const date = new Date().toLocaleDateString('pt-BR');
+        const includeMetadata = document.getElementById('includeMetadata').checked;
         
         let exportedContent = '';
-        let filename = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}`;
+        let filename = `${notebook.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}`;
         
         switch(format) {
             case 'txt':
-                exportedContent = this.stripHTML(content);
+                exportedContent = this.exportNotebookToTxt(notebook, includeMetadata);
                 filename += '.txt';
                 break;
                 
             case 'html':
-                exportedContent = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title} - ESCRITY</title>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            line-height: 1.8;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            color: #2c3e50;
-        }
-        h1, h2, h3 {
-            color: #1a1a2e;
-            margin-top: 2em;
-        }
-        blockquote {
-            border-left: 4px solid #3498db;
-            padding-left: 1.5em;
-            margin: 2em 0;
-            font-style: italic;
-            color: #7f8c8d;
-        }
-        img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin: 1em 0;
-        }
-        .metadata {
-            color: #95a5a6;
-            font-size: 0.9em;
-            border-top: 1px solid #e0e0e0;
-            padding-top: 1em;
-            margin-top: 3em;
-        }
-    </style>
-</head>
-<body>
-    <h1>${title}</h1>
-    <div class="metadata">
-        Exportado do ESCRITY em ${date}<br>
-        ${this.currentNotebook?.name ? `Caderno: ${this.currentNotebook.name}` : ''}
-    </div>
-    ${content}
-</body>
-</html>`;
+                exportedContent = this.exportNotebookToHtml(notebook, includeMetadata, date);
                 filename += '.html';
                 break;
                 
             case 'pdf':
-                // Para PDF, usar html2pdf.js (precisa ser incluído)
-                this.exportToPDF(title, content, date);
-                return;
-                
-            case 'docx':
-                // Para DOCX, seria necessário uma biblioteca adicional
-                this.showNotification('Exportação DOCX', 'Em desenvolvimento...', 'info');
+                // Para PDF, exportar como HTML primeiro
+                const htmlContent = this.exportNotebookToHtml(notebook, includeMetadata, date);
+                this.exportToPDF(notebook.name, htmlContent);
                 return;
         }
         
@@ -1693,7 +1727,198 @@ class EscrityApp {
         URL.revokeObjectURL(url);
         
         document.getElementById('exportModal').classList.remove('active');
-        this.showNotification('Exportação concluída', `"${title}" foi exportado com sucesso.`, 'success');
+        this.showNotification('Exportação concluída', `"${notebook.name}" foi exportado com sucesso.`, 'success');
+    }
+
+    exportNotebookToTxt(notebook, includeMetadata) {
+        let content = `CADERNO: ${notebook.name}\n`;
+        content += `Data de criação: ${new Date(notebook.created).toLocaleDateString('pt-BR')}\n`;
+        content += `Última atualização: ${new Date(notebook.updated).toLocaleDateString('pt-BR')}\n`;
+        content += `Total de folhas: ${notebook.sheets ? notebook.sheets.length : 0}\n`;
+        content += '='.repeat(50) + '\n\n';
+        
+        if (notebook.sheets && notebook.sheets.length > 0) {
+            notebook.sheets.forEach((sheet, index) => {
+                content += `FOLHA ${index + 1}: ${sheet.title}\n`;
+                if (includeMetadata) {
+                    content += `Criada em: ${new Date(sheet.created).toLocaleDateString('pt-BR')}\n`;
+                    content += `Atualizada em: ${new Date(sheet.updated).toLocaleDateString('pt-BR')}\n`;
+                }
+                content += '-'.repeat(40) + '\n';
+                
+                // Converter HTML para texto simples
+                const div = document.createElement('div');
+                div.innerHTML = sheet.content;
+                const textContent = div.textContent || div.innerText || '';
+                content += textContent + '\n\n';
+                content += '='.repeat(50) + '\n\n';
+            });
+        }
+        
+        if (includeMetadata) {
+            content += '\n\n' + '='.repeat(50) + '\n';
+            content += `Exportado do ESCRITY em ${new Date().toLocaleDateString('pt-BR')}\n`;
+            content += 'www.escrity.app\n';
+        }
+        
+        return content;
+    }
+
+    exportNotebookToHtml(notebook, includeMetadata, date) {
+        let sheetsHtml = '';
+        
+        if (notebook.sheets && notebook.sheets.length > 0) {
+            notebook.sheets.forEach((sheet, index) => {
+                sheetsHtml += `
+                    <div class="sheet">
+                        <h2>${index + 1}. ${this.escapeHtml(sheet.title)}</h2>
+                        ${includeMetadata ? `
+                            <div class="sheet-meta">
+                                Criada em: ${new Date(sheet.created).toLocaleDateString('pt-BR')} | 
+                                Atualizada em: ${new Date(sheet.updated).toLocaleDateString('pt-BR')}
+                            </div>
+                        ` : ''}
+                        <div class="sheet-content">${sheet.content}</div>
+                        <hr class="sheet-divider">
+                    </div>
+                `;
+            });
+        }
+        
+        return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${notebook.name} - ESCRITY</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.8;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #2c3e50;
+            background: #f8f9fa;
+        }
+        .notebook-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid #3498db;
+        }
+        .notebook-header h1 {
+            color: #1a1a2e;
+            margin-bottom: 1rem;
+            font-size: 2.5em;
+        }
+        .notebook-meta {
+            color: #7f8c8d;
+            font-size: 0.95em;
+            margin-bottom: 2rem;
+        }
+        .sheet {
+            margin-bottom: 3rem;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .sheet h2 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 0.5rem;
+        }
+        .sheet-meta {
+            color: #95a5a6;
+            font-size: 0.9em;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+        .sheet-content {
+            font-size: 1.1em;
+            line-height: 1.8;
+        }
+        .sheet-content p {
+            margin-bottom: 1.5em;
+        }
+        .sheet-content h1, .sheet-content h2, .sheet-content h3 {
+            margin: 2em 0 1em;
+            color: #1a1a2e;
+        }
+        .sheet-content blockquote {
+            border-left: 4px solid #3498db;
+            padding-left: 1.5em;
+            margin: 2em 0;
+            font-style: italic;
+            color: #7f8c8d;
+            background: #f8f9fa;
+            padding: 1em;
+            border-radius: 5px;
+        }
+        .sheet-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1.5em 0;
+        }
+        .sheet-divider {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 2rem 0;
+        }
+        .export-footer {
+            text-align: center;
+            color: #95a5a6;
+            font-size: 0.9em;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e0e0e0;
+        }
+        @media print {
+            body {
+                background: white !important;
+                padding: 0 !important;
+            }
+            .sheet {
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin-bottom: 2rem !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="notebook-header">
+        <h1>${this.escapeHtml(notebook.name)}</h1>
+        ${includeMetadata ? `
+            <div class="notebook-meta">
+                Criado em: ${new Date(notebook.created).toLocaleDateString('pt-BR')} | 
+                Atualizado em: ${new Date(notebook.updated).toLocaleDateString('pt-BR')} | 
+                Total de folhas: ${notebook.sheets ? notebook.sheets.length : 0}
+            </div>
+        ` : ''}
+    </div>
+    
+    <div class="notebook-content">
+        ${sheetsHtml}
+    </div>
+    
+    ${includeMetadata ? `
+        <div class="export-footer">
+            Exportado do ESCRITY em ${date} | www.escrity.app
+        </div>
+    ` : ''}
+</body>
+</html>`;
+    }
+
+    exportToPDF(title, htmlContent) {
+        // Esta função requer a biblioteca html2pdf.js
+        // Para simplificar, vamos exportar como HTML
+        this.exportNotebook('html');
     }
 
     stripHTML(html) {
@@ -1706,16 +1931,9 @@ class EscrityApp {
         const mimeTypes = {
             'txt': 'text/plain',
             'html': 'text/html',
-            'pdf': 'application/pdf',
-            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            'pdf': 'application/pdf'
         };
         return mimeTypes[format] || 'text/plain';
-    }
-
-    exportToPDF(title, content, date) {
-        // Esta função requer a biblioteca html2pdf.js
-        // Para simplificar, vamos exportar como HTML
-        this.exportSheet('html');
     }
 
     // ========== UTILITÁRIOS ==========
@@ -1757,11 +1975,27 @@ class EscrityApp {
         };
     }
 
-    formatDate(dateString) {
+    formatDate(dateString, short = false) {
+        if (!dateString) return 'Nunca';
+        
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Data inválida';
+        
         const now = new Date();
         const diffMs = now - date;
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (short) {
+            if (diffDays === 0) {
+                return 'Hoje';
+            } else if (diffDays === 1) {
+                return 'Ontem';
+            } else if (diffDays < 7) {
+                return `${diffDays}d`;
+            } else {
+                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            }
+        }
         
         if (diffDays === 0) {
             const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -1985,26 +2219,6 @@ class EscrityApp {
         progressBar.onclick = (e) => this.updateProgressBar(e);
         volumeBar.onclick = (e) => this.updateVolume(e);
 
-        // Bibliotecas
-        document.querySelectorAll('.library-tab').forEach(tab => {
-            tab.onclick = () => {
-                this.switchLibrary(tab.dataset.library);
-            };
-        });
-
-        // Trilhas
-        document.addEventListener('click', (e) => {
-            const trackItem = e.target.closest('.track-item-library');
-            if (trackItem && !e.target.closest('.delete-track')) {
-                const trackId = trackItem.dataset.id;
-                const track = [...this.tracks.focus, ...this.tracks.creative, ...this.tracks.ambient, ...this.tracks.uploaded]
-                    .find(t => t.id === trackId);
-                if (track) {
-                    this.playTrack(track);
-                }
-            }
-        });
-
         // Upload de música
         const uploadArea = document.getElementById('uploadArea');
         const audioUpload = document.getElementById('audioUpload');
@@ -2029,6 +2243,44 @@ class EscrityApp {
         audioUpload.onchange = (e) => {
             this.handleMusicUpload(e.target.files);
             e.target.value = '';
+        };
+
+        // Limpar todas as músicas
+        document.getElementById('deleteAllTracks').onclick = () => this.deleteAllTracks();
+
+        // ===== BACKUP =====
+        document.getElementById('backupBtn').onclick = () => this.showBackupModal();
+        document.getElementById('restoreBtn').onclick = () => this.showRestoreModal();
+        
+        // Opções de backup
+        document.querySelectorAll('.backup-option').forEach(option => {
+            option.onclick = () => {
+                const action = option.dataset.action;
+                document.getElementById('backupModal').classList.remove('active');
+                
+                switch(action) {
+                    case 'create':
+                        this.createManualBackup();
+                        break;
+                    case 'restore':
+                        this.showRestoreModal();
+                        break;
+                    case 'manage':
+                        this.showRestoreModal();
+                        break;
+                }
+            };
+        });
+
+        document.getElementById('cancelBackupBtn').onclick = () => {
+            document.getElementById('backupModal').classList.remove('active');
+        };
+
+        // Restauração
+        document.getElementById('confirmRestoreBtn').onclick = () => this.restoreBackup();
+        document.getElementById('cancelRestoreBtn').onclick = () => {
+            document.getElementById('restoreModal').classList.remove('active');
+            this.selectedBackupKey = null;
         };
 
         // ===== CAPA =====
@@ -2096,7 +2348,7 @@ class EscrityApp {
 
         document.getElementById('confirmExportBtn').onclick = () => {
             const format = document.querySelector('.export-option.active').dataset.format;
-            this.exportSheet(format);
+            this.exportNotebook(format);
         };
 
         document.querySelectorAll('.export-option').forEach(option => {
@@ -2242,6 +2494,8 @@ class EscrityApp {
         document.querySelectorAll('.modal.active').forEach(modal => {
             modal.classList.remove('active');
         });
+        
+        this.selectedBackupKey = null;
     }
 
     updateCover(coverType, customCover = null) {
@@ -2255,7 +2509,7 @@ class EscrityApp {
         if (coverType === 'custom' && customCover) {
             coverImg.src = customCover;
         } else if (coverType === 'leather') {
-            coverImg.src = ''; // Usar cor sólida
+            coverImg.src = '';
             coverImg.style.background = '#8B4513';
         } else if (coverType === 'fabric') {
             coverImg.src = '';
@@ -2346,8 +2600,8 @@ class EscrityApp {
         // Verificar modificações não salvas a cada 5 segundos
         setInterval(() => this.checkUnsavedChanges(), 5000);
         
-        // Criar backup automático a cada hora
-        setInterval(() => this.createAutoBackup(), 60 * 60 * 1000);
+        // Criar backup automático a cada 24 horas
+        setInterval(() => this.createAutoBackup(), 24 * 60 * 60 * 1000);
     }
 }
 

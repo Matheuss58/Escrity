@@ -188,7 +188,7 @@
                 
                 <div class="editor-container">
                     <div id="editor" contenteditable="true" class="editor-content" spellcheck="true">
-                        <p class="placeholder">Comece a escrever sua história aqui... Deixe as palavras fluírem naturalmente.</p>
+                        <p class="placeholder">Selecione um caderno para começar a escrever...</p>
                     </div>
                 </div>
                 
@@ -232,7 +232,7 @@
                         </div>
                         <div class="track-info">
                             <div class="track-title" id="currentTrackTitle">Nenhuma trilha</div>
-                            <div class="track-artist" id="currentTrackArtist">Selecione uma atmosfera</div>
+                            <div class="track-artist" id="currentTrackArtist">Importe suas músicas</div>
                         </div>
                     </div>
                     
@@ -269,40 +269,35 @@
                 
                 <div class="music-library">
                     <div class="library-header">
-                        <h4><i class="fas fa-compact-disc"></i> Bibliotecas</h4>
-                        <div class="library-tabs">
-                            <button class="library-tab active" data-library="focus">
-                                <i class="fas fa-brain"></i> Foco
-                            </button>
-                            <button class="library-tab" data-library="creative">
-                                <i class="fas fa-palette"></i> Criatividade
-                            </button>
-                            <button class="library-tab" data-library="ambient">
-                                <i class="fas fa-cloud"></i> Ambiente
+                        <h4><i class="fas fa-music"></i> Suas Músicas</h4>
+                        <div class="library-info">
+                            <span id="trackCount">0 músicas</span>
+                            <button id="deleteAllTracks" class="btn-small" title="Limpar todas">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
                     
                     <div class="tracks-container">
-                        <div class="tracks-list" id="focusTracks">
-                            <!-- Trilogas de foco -->
-                        </div>
-                        <div class="tracks-list" id="creativeTracks" style="display: none;">
-                            <!-- Trilogas criativas -->
-                        </div>
-                        <div class="tracks-list" id="ambientTracks" style="display: none;">
-                            <!-- Trilhas ambientais -->
+                        <div class="tracks-list" id="uploadedTracksList">
+                            <!-- Músicas importadas serão carregadas aqui -->
+                            <div class="empty-state" id="emptyTracksState">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Nenhuma música importada</p>
+                                <p class="hint">Importe suas músicas para criar atmosfera</p>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="upload-section">
                         <div class="upload-area" id="uploadArea">
                             <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Importar suas trilhas</p>
+                            <p>Importar músicas</p>
+                            <p class="upload-hint">Arraste ou clique para selecionar</p>
                             <input type="file" id="audioUpload" accept="audio/*" multiple hidden>
                         </div>
-                        <div class="uploaded-tracks" id="uploadedTracksList">
-                            <!-- Trilhas importadas -->
+                        <div class="upload-info">
+                            <p><i class="fas fa-info-circle"></i> Formatos suportados: MP3, WAV, OGG, M4A</p>
                         </div>
                     </div>
                 </div>
@@ -325,12 +320,12 @@
                 <div class="color-selection">
                     <p>Cor do caderno:</p>
                     <div class="color-options">
-                        <div class="color-option" data-color="#1a1a2e" style="background: #1a1a2e;"></div>
+                        <div class="color-option active" data-color="#1a1a2e" style="background: #1a1a2e;"></div>
                         <div class="color-option" data-color="#2c3e50" style="background: #2c3e50;"></div>
                         <div class="color-option" data-color="#34495e" style="background: #34495e;"></div>
-                        <div class="color-option" data-color="#2c3e50" style="background: #2c3e50; border: 2px solid #3498db;"></div>
                         <div class="color-option" data-color="#16a085" style="background: #16a085;"></div>
                         <div class="color-option" data-color="#27ae60" style="background: #27ae60;"></div>
+                        <div class="color-option" data-color="#8e44ad" style="background: #8e44ad;"></div>
                     </div>
                 </div>
             </div>
@@ -386,7 +381,7 @@
                 <div class="customization-section">
                     <h4><i class="fas fa-image"></i> Fundo da Página</h4>
                     <div class="background-grid">
-                        <div class="bg-option" data-bg="none">
+                        <div class="bg-option active" data-bg="none">
                             <div class="bg-preview blank">
                                 <i class="fas fa-ban"></i>
                             </div>
@@ -413,8 +408,8 @@
                 <div class="customization-section">
                     <h4><i class="fas fa-tint"></i> Tom da Página</h4>
                     <div class="color-palette">
+                        <div class="color-tone active" data-tone="#ffffff" style="background: #ffffff;"></div>
                         <div class="color-tone" data-tone="#f8f5e9" style="background: #f8f5e9;"></div>
-                        <div class="color-tone" data-tone="#ffffff" style="background: #ffffff;"></div>
                         <div class="color-tone" data-tone="#f0f0f0" style="background: #f0f0f0;"></div>
                         <div class="color-tone" data-tone="#1a1a2e" style="background: #1a1a2e;"></div>
                         <div class="color-tone" data-tone="#2d3436" style="background: #2d3436;"></div>
@@ -543,8 +538,8 @@
     <div id="exportModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-file-export"></i> Exportar</h3>
-                <p class="modal-subtitle">Salve sua história em diferentes formatos</p>
+                <h3><i class="fas fa-file-export"></i> Exportar Caderno</h3>
+                <p class="modal-subtitle">Salve todo o caderno em diferentes formatos</p>
             </div>
             <div class="modal-body">
                 <div class="export-options">
@@ -555,7 +550,7 @@
                             <p>Formato universal para leitura</p>
                         </div>
                     </div>
-                    <div class="export-option" data-format="txt">
+                    <div class="export-option active" data-format="txt">
                         <i class="fas fa-file-alt"></i>
                         <div>
                             <h4>Texto Simples</h4>
@@ -569,13 +564,6 @@
                             <p>Preserva formatação e imagens</p>
                         </div>
                     </div>
-                    <div class="export-option" data-format="docx">
-                        <i class="fas fa-file-word"></i>
-                        <div>
-                            <h4>Documento</h4>
-                            <p>Editável em processadores de texto</p>
-                        </div>
-                    </div>
                 </div>
                 <div class="export-settings">
                     <label>
@@ -587,7 +575,7 @@
             <div class="modal-actions">
                 <button id="cancelExportBtn" class="btn-secondary">Cancelar</button>
                 <button id="confirmExportBtn" class="btn-primary">
-                    <i class="fas fa-download"></i> Exportar
+                    <i class="fas fa-download"></i> Exportar Caderno
                 </button>
             </div>
         </div>
@@ -602,7 +590,7 @@
             </div>
             <div class="modal-body">
                 <div class="cover-presets">
-                    <div class="cover-preset" data-cover="default">
+                    <div class="cover-preset active" data-cover="default">
                         <div class="cover-preview default">
                             <i class="fas fa-book"></i>
                         </div>
@@ -641,6 +629,77 @@
         </div>
     </div>
 
+    <!-- Modal de backup -->
+    <div id="backupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-box-archive"></i> Sistema de Backup</h3>
+                <p class="modal-subtitle">Proteja suas histórias com cópias de segurança</p>
+            </div>
+            <div class="modal-body">
+                <div class="backup-options">
+                    <div class="backup-option" data-action="create">
+                        <i class="fas fa-save"></i>
+                        <div>
+                            <h4>Criar Backup</h4>
+                            <p>Salve uma cópia de segurança agora</p>
+                        </div>
+                    </div>
+                    <div class="backup-option" data-action="restore">
+                        <i class="fas fa-history"></i>
+                        <div>
+                            <h4>Restaurar</h4>
+                            <p>Recupere de um backup anterior</p>
+                        </div>
+                    </div>
+                    <div class="backup-option" data-action="manage">
+                        <i class="fas fa-folder-open"></i>
+                        <div>
+                            <h4>Gerenciar</h4>
+                            <p>Veja e organize seus backups</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="backup-info" id="backupInfo">
+                    <p><i class="fas fa-info-circle"></i> Backups são salvos automaticamente a cada 24 horas</p>
+                    <p><i class="fas fa-shield-alt"></i> Seus dados permanecem apenas neste dispositivo</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="cancelBackupBtn" class="btn-secondary">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de restauração -->
+    <div id="restoreModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-history"></i> Restaurar Backup</h3>
+                <p class="modal-subtitle">Selecione um backup para restaurar</p>
+            </div>
+            <div class="modal-body">
+                <div class="backups-list" id="backupsList">
+                    <!-- Backups serão listados aqui -->
+                    <div class="empty-state">
+                        <i class="fas fa-history"></i>
+                        <p>Nenhum backup encontrado</p>
+                    </div>
+                </div>
+                <div class="restore-warning">
+                    <p><i class="fas fa-exclamation-triangle"></i> A restauração substituirá todos os dados atuais</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="cancelRestoreBtn" class="btn-secondary">Cancelar</button>
+                <button id="confirmRestoreBtn" class="btn-primary" disabled>
+                    <i class="fas fa-history"></i> Restaurar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de confirmação -->
     <div id="confirmModal" class="modal">
         <div class="modal-content">
@@ -670,72 +729,6 @@
 
     <!-- Audio player -->
     <audio id="audioPlayer" hidden></audio>
-
-    <!-- Script de músicas padrão -->
-    <script id="default-music-config" type="application/json">
-    {
-        "focus": [
-            {
-                "id": "focus-1",
-                "title": "Concentração Profunda",
-                "artist": "Fluxo de Trabalho",
-                "duration": "25:00",
-                "url": "https://assets.mixkit.co/music/preview/mixkit-driving-ambition-32.mp3",
-                "type": "focus",
-                "color": "#3498db"
-            },
-            {
-                "id": "focus-2",
-                "title": "Foco Zen",
-                "artist": "Meditação Ativa",
-                "duration": "30:00",
-                "url": "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",
-                "type": "focus",
-                "color": "#2ecc71"
-            }
-        ],
-        "creative": [
-            {
-                "id": "creative-1",
-                "title": "Inspiração Noturna",
-                "artist": "Museu Criativo",
-                "duration": "45:00",
-                "url": "https://assets.mixkit.co/music/preview/mixkit-deep-urban-623.mp3",
-                "type": "creative",
-                "color": "#9b59b6"
-            },
-            {
-                "id": "creative-2",
-                "title": "Fluxo de Ideias",
-                "artist": "Oceano Mental",
-                "duration": "50:00",
-                "url": "https://assets.mixkit.co/music/preview/mixkit-piano-melody-1116.mp3",
-                "type": "creative",
-                "color": "#e74c3c"
-            }
-        ],
-        "ambient": [
-            {
-                "id": "ambient-1",
-                "title": "Chuva na Janela",
-                "artist": "Natureza",
-                "duration": "60:00",
-                "url": "https://assets.mixkit.co/sfx/preview/mixkit-rain-loop-1245.mp3",
-                "type": "ambient",
-                "color": "#34495e"
-            },
-            {
-                "id": "ambient-2",
-                "title": "Fogueira Noturna",
-                "artist": "Elementos",
-                "duration": "40:00",
-                "url": "https://assets.mixkit.co/sfx/preview/mixkit-campfire-crackles-1321.mp3",
-                "type": "ambient",
-                "color": "#e67e22"
-            }
-        ]
-    }
-    </script>
 
     <script src="script.js"></script>
     <script>
