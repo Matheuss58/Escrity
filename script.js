@@ -1,59 +1,55 @@
-class NotesApp {
+class EscrityApp {
     constructor() {
         this.currentNotebook = null;
         this.currentSheet = null;
         this.notebooks = [];
         this.deferredPrompt = null;
         this.editingNotebookId = null;
-        this.isLocalMode = true; // Sempre modo local
         this.unsavedChanges = false;
-        this.ignoredWords = new Set(); // Palavras ignoradas individualmente
+        this.ignoredWords = new Set();
+        this.currentTextColor = '#2c3e50';
         
-        // Variáveis para música
+        // Música
         this.isMusicVisible = false;
-        this.currentPlaylist = 'default';
+        this.currentLibrary = 'focus';
         this.currentTrack = null;
         this.isPlaying = false;
-        this.defaultTracks = [];
         this.tracks = {
-            default: [],
+            focus: [],
+            creative: [],
+            ambient: [],
             uploaded: []
         };
         
-        // Personalização da folha
+        // Personalização
         this.currentCustomization = {
+            backgroundType: 'none',
+            backgroundColor: '#ffffff',
             backgroundImage: null,
-            backgroundOpacity: 0.1,
-            backgroundBlur: 0,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
+            pageTone: '#ffffff',
+            marginSize: 'normal'
         };
         
         // Configurações de fonte
         this.fontSettings = {
             fontFamily: "'Inter', sans-serif",
             fontSize: 18,
-            lineHeight: 1.8,
-            letterSpacing: 0
+            lineHeight: 1.6
         };
         
         this.audio = document.getElementById('audioPlayer');
-        this.backupStats = {
-            notebooks: 0,
-            sheets: 0,
-            size: '0 KB'
-        };
+        this.audio.volume = 0.5;
         
         this.init();
     }
 
     async init() {
-        console.log('Inicializando ESCRITY...');
+        console.log('ESCRITY: Inicializando guardião de histórias...');
         
-        // Mostrar tela de loading
+        // Mostrar loading
         document.getElementById('loadingScreen').style.display = 'flex';
         
-        // Carregar configuração de músicas padrão
+        // Carregar músicas
         await this.loadDefaultMusic();
         
         // Configurar eventos
@@ -63,35 +59,31 @@ class NotesApp {
         await this.setupServiceWorker();
         this.setupInstallPrompt();
         
-        // Configurar eventos do áudio
+        // Configurar áudio
         this.setupAudioEvents();
         
-        // Carregar configurações de música
-        this.loadMusicSettings();
+        // Carregar configurações
+        this.loadSettings();
         
-        // Carregar dados locais
+        // Carregar dados
         await this.loadData();
         
-        // Esconder loading e mostrar app
+        // Iniciar app
         setTimeout(() => {
             document.getElementById('loadingScreen').classList.add('fade-out');
             setTimeout(() => {
                 document.getElementById('loadingScreen').style.display = 'none';
                 this.enterApp();
             }, 500);
-        }, 800);
+        }, 1000);
     }
 
     enterApp() {
-        console.log('Entrando no app...');
+        console.log('ESCRITY: Entrando no espaço de criação...');
         
         try {
             // Atualizar interface
-            document.getElementById('currentUsername').textContent = 'Modo Local';
-            
-            const syncStatus = document.getElementById('syncStatus');
-            syncStatus.innerHTML = '<i class="fas fa-laptop"></i> Dispositivo Local';
-            syncStatus.style.color = 'var(--warning-color)';
+            document.getElementById('currentUsername').textContent = 'Escritor Local';
             
             // Mostrar app
             document.getElementById('app-container').style.display = 'flex';
@@ -99,42 +91,43 @@ class NotesApp {
             // Renderizar notebooks
             this.renderNotebooks();
             
-            // Selecionar o primeiro notebook ou criar padrão
+            // Selecionar ou criar caderno padrão
             if (this.notebooks.length > 0) {
                 this.selectNotebook(this.notebooks[0].id);
             } else {
                 this.createDefaultNotebook();
             }
             
-            // Mostrar notificação
-            this.showNotification('ESCRITY iniciado em modo local. Dados salvos apenas neste dispositivo.', 'info');
+            // Notificação inicial
+            this.showNotification('Bem-vindo ao ESCRITY', 'Seu espaço seguro para histórias está pronto.', 'info');
             
             // Configurar intervalos
             this.setupIntervals();
             
-            // Registrar evento de saída
-            this.setupBeforeUnload();
+            // Configurar salvamento automático
+            this.setupAutoSave();
             
         } catch (error) {
-            console.error('Erro ao entrar no app:', error);
-            this.showNotification('Erro ao carregar dados. Tente recarregar a página.', 'error');
+            console.error('ESCRITY: Erro ao entrar:', error);
+            this.showNotification('Erro', 'Não foi possível carregar seus dados.', 'error');
         }
     }
 
     async loadData() {
-        console.log('Carregando dados locais...');
+        console.log('ESCRITY: Carregando histórias...');
         
-        // Carregar dados locais
-        const localData = localStorage.getItem('escry-local-data');
+        const localData = localStorage.getItem('escry-data');
         if (localData) {
             try {
                 const data = JSON.parse(localData);
                 this.notebooks = data.notebooks || [];
                 this.fontSettings = data.fontSettings || this.fontSettings;
                 this.ignoredWords = new Set(data.ignoredWords || []);
-                console.log('Dados locais carregados:', this.notebooks.length);
+                this.currentTextColor = data.textColor || '#2c3e50';
+                
+                console.log(`ESCRITY: ${this.notebooks.length} cadernos carregados`);
             } catch (e) {
-                console.error('Erro ao parsear dados locais:', e);
+                console.error('ESCRITY: Erro ao carregar dados:', e);
                 this.notebooks = [];
             }
         } else {
@@ -143,72 +136,148 @@ class NotesApp {
     }
 
     saveData() {
-        console.log('Salvando dados...');
+        console.log('ESCRITY: Guardando histórias...');
         
         const data = {
             notebooks: this.notebooks,
             fontSettings: this.fontSettings,
             ignoredWords: Array.from(this.ignoredWords),
+            textColor: this.currentTextColor,
             lastSave: new Date().toISOString(),
-            version: '2.0'
+            version: '2.0',
+            dataSize: this.calculateDataSize()
         };
         
         // Salvar localmente
-        localStorage.setItem('escry-local-data', JSON.stringify(data));
-        console.log('Dados salvos localmente');
+        localStorage.setItem('escry-data', JSON.stringify(data));
+        console.log('ESCRITY: Histórias guardadas com segurança');
         
         this.updateLastSaved();
         this.unsavedChanges = false;
         document.getElementById('saveBtn').classList.remove('unsaved');
+        document.getElementById('saveBtn').innerHTML = '<i class="fas fa-save"></i> <span class="save-text">Guardado</span>';
+        
+        // Backup automático periódico
+        this.createAutoBackup();
     }
 
-    clearLocalData() {
-        if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
-            localStorage.removeItem('escry-local-data');
-            localStorage.removeItem('escry-music');
-            this.notebooks = [];
-            this.currentNotebook = null;
-            this.currentSheet = null;
-            this.renderNotebooks();
-            this.clearEditor();
-            this.showNotification('Todos os dados foram limpos.', 'info');
+    calculateDataSize() {
+        const data = JSON.stringify(this.notebooks);
+        const sizeInBytes = new Blob([data]).size;
+        const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+        return `${sizeInMB} MB`;
+    }
+
+    createAutoBackup() {
+        const today = new Date().toDateString();
+        const lastBackup = localStorage.getItem('escry-last-backup');
+        
+        if (lastBackup !== today) {
+            const backupData = {
+                app: 'ESCRITY',
+                version: '2.0',
+                date: new Date().toISOString(),
+                data: {
+                    notebooks: this.notebooks,
+                    settings: {
+                        fontSettings: this.fontSettings,
+                        textColor: this.currentTextColor
+                    }
+                }
+            };
+            
+            localStorage.setItem('escry-auto-backup-' + new Date().toISOString().split('T')[0], JSON.stringify(backupData));
+            localStorage.setItem('escry-last-backup', today);
+            
+            // Manter apenas últimos 7 backups
+            this.cleanOldBackups();
         }
     }
 
-    createDefaultNotebook() {
-        console.log('Criando caderno padrão...');
+    cleanOldBackups() {
+        const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('escry-auto-backup-'));
         
+        if (backupKeys.length > 7) {
+            // Ordenar por data (mais antigo primeiro)
+            backupKeys.sort();
+            
+            // Remover backups antigos
+            const toRemove = backupKeys.slice(0, backupKeys.length - 7);
+            toRemove.forEach(key => localStorage.removeItem(key));
+        }
+    }
+
+    clearLocalData() {
+        this.showConfirm(
+            'Limpar tudo',
+            'Tem certeza? Todas as suas histórias serão perdidas permanentemente.',
+            () => {
+                localStorage.removeItem('escry-data');
+                localStorage.removeItem('escry-music');
+                localStorage.removeItem('escry-settings');
+                
+                this.notebooks = [];
+                this.currentNotebook = null;
+                this.currentSheet = null;
+                
+                this.renderNotebooks();
+                this.clearEditor();
+                
+                this.showNotification('Limpeza completa', 'Seu espaço está vazio e pronto para novas histórias.', 'info');
+                
+                // Criar novo caderno padrão
+                setTimeout(() => this.createDefaultNotebook(), 1000);
+            }
+        );
+    }
+
+    createDefaultNotebook() {
         const defaultNotebook = {
-            id: 'notebook-default-' + Date.now(),
-            name: 'Meu Primeiro Caderno',
-            cover: 'default.jpg', // Referência direta à capa padrão
+            id: 'notebook-' + Date.now(),
+            name: 'Minhas Histórias',
+            cover: 'default.jpg',
             customCover: null,
+            color: '#1a1a2e',
             created: new Date().toISOString(),
             updated: new Date().toISOString(),
             sheets: [{
-                id: 'sheet-default-' + Date.now(),
-                title: 'Bem-vindo ao ESCRITY',
+                id: 'sheet-' + Date.now(),
+                title: 'Bem-vindo',
                 content: `
-                    <h1>Bem-vindo ao ESCRITY! ✨</h1>
-                    <p>Seu editor de notas local está pronto para uso.</p>
-                    <h2>🎯 Comece por aqui:</h2>
-                    <ul>
-                        <li><strong>Novo Caderno:</strong> Clique no botão "+" na barra lateral</li>
-                        <li><strong>Nova Folha:</strong> Clique no botão "+" na barra de folhas</li>
-                        <li><strong>Formatação:</strong> Use os botões na barra superior</li>
-                        <li><strong>Imagens:</strong> Clique no botão de imagem para inserir</li>
-                        <li><strong>Personalização:</strong> Clique em "Personalizar" para mudar o fundo da folha</li>
-                        <li><strong>Fonte:</strong> Clique em "Fonte" para alterar aparência do texto</li>
-                    </ul>
-                    <p><em>Dica: Use Ctrl+S para salvar rapidamente!</em></p>
+                    <h1 style="text-align: center; margin-bottom: 2em;">📖 Bem-vindo ao ESCRITY</h1>
+                    
+                    <p style="font-size: 1.2em; line-height: 1.8;">
+                        Este é seu espaço pessoal para guardar histórias, ideias, emoções e tudo que merece ser lembrado.
+                    </p>
+                    
+                    <div style="background: rgba(52, 152, 219, 0.1); padding: 2em; border-radius: 10px; margin: 2em 0;">
+                        <h3>✨ Comece sua jornada:</h3>
+                        <ul style="margin-top: 1em;">
+                            <li><strong>Novo Caderno:</strong> Clique no "+" na barra lateral</li>
+                            <li><strong>Nova Folha:</strong> Selecione um caderno e clique no "+" de folhas</li>
+                            <li><strong>Escreva livremente:</strong> Use as ferramentas para formatar seu texto</li>
+                            <li><strong>Personalize:</strong> Ajuste o ambiente de escrita no botão "Ambiente"</li>
+                            <li><strong>Atmosfera:</strong> Ative sons ambiente para concentração</li>
+                        </ul>
+                    </div>
+                    
+                    <blockquote style="border-left: 4px solid #3498db; padding-left: 1.5em; font-style: italic; color: #7f8c8d;">
+                        "As melhores histórias não são escritas, são vividas através das palavras."
+                    </blockquote>
+                    
+                    <p style="margin-top: 3em; text-align: center; color: #95a5a6;">
+                        <small>Seus dados são guardados apenas neste dispositivo. Totalmente privado e seguro.</small>
+                    </p>
                 `,
                 created: new Date().toISOString(),
                 updated: new Date().toISOString(),
                 images: [],
                 customization: {
+                    backgroundType: 'none',
+                    backgroundColor: '#ffffff',
                     backgroundImage: null,
-                    backgroundOpacity: 0.1,
-                    backgroundBlur: 0
+                    pageTone: '#ffffff',
+                    marginSize: 'normal'
                 },
                 fontSettings: { ...this.fontSettings }
             }]
@@ -219,176 +288,10 @@ class NotesApp {
         this.renderNotebooks();
         this.selectNotebook(defaultNotebook.id);
         
-        this.showNotification('Caderno padrão criado. Comece a escrever!', 'info');
+        this.showNotification('Espaço criado', 'Seu primeiro caderno está pronto para histórias.', 'success');
     }
 
-    // ========== BACKUP E RESTAURAÇÃO ==========
-
-    showBackupModal() {
-        this.updateBackupStats();
-        document.getElementById('backupModal').classList.add('active');
-    }
-
-    updateBackupStats() {
-        let totalSheets = 0;
-        let totalSize = 0;
-        
-        this.notebooks.forEach(notebook => {
-            totalSheets += notebook.sheets?.length || 0;
-            
-            // Calcular tamanho aproximado
-            notebook.sheets?.forEach(sheet => {
-                totalSize += JSON.stringify(sheet).length;
-            });
-        });
-        
-        totalSize += JSON.stringify(this.notebooks).length;
-        
-        this.backupStats = {
-            notebooks: this.notebooks.length,
-            sheets: totalSheets,
-            size: this.formatBytes(totalSize)
-        };
-        
-        document.getElementById('backupNotebooks').textContent = this.backupStats.notebooks;
-        document.getElementById('backupSheets').textContent = this.backupStats.sheets;
-        document.getElementById('backupSize').textContent = this.backupStats.size;
-    }
-
-    formatBytes(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    createBackup() {
-        const data = {
-            app: 'ESCRITY',
-            version: '2.0',
-            mode: 'local',
-            date: new Date().toISOString(),
-            data: {
-                notebooks: this.notebooks,
-                music: this.tracks.uploaded,
-                fontSettings: this.fontSettings,
-                ignoredWords: Array.from(this.ignoredWords)
-            }
-        };
-        
-        const blob = new Blob([JSON.stringify(data, null, 2)], {
-            type: 'application/json'
-        });
-        
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `escry-backup-${new Date().toISOString().split('T')[0]}.escry`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        this.showNotification('Backup criado com sucesso!', 'success');
-        document.getElementById('backupModal').classList.remove('active');
-    }
-
-    showRestoreModal() {
-        document.getElementById('restoreModal').classList.add('active');
-        document.getElementById('restoreFileInfo').style.display = 'none';
-        document.getElementById('confirmRestoreBtn').disabled = true;
-    }
-
-    handleRestoreFile(file) {
-        if (!file || !file.name.endsWith('.escry')) {
-            this.showNotification('Selecione um arquivo de backup válido (.escry)', 'error');
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const backup = JSON.parse(e.target.result);
-                
-                // Validar backup
-                if (!backup.app || backup.app !== 'ESCRITY') {
-                    throw new Error('Arquivo de backup inválido');
-                }
-                
-                // Mostrar informações do arquivo
-                document.getElementById('restoreFileName').textContent = file.name;
-                document.getElementById('restoreFileSize').textContent = this.formatBytes(file.size);
-                document.getElementById('restoreFileInfo').style.display = 'block';
-                document.getElementById('confirmRestoreBtn').disabled = false;
-                
-                // Armazenar dados para restauração
-                this.pendingRestoreData = backup;
-                
-            } catch (error) {
-                console.error('Erro ao ler backup:', error);
-                this.showNotification('Erro ao ler arquivo de backup', 'error');
-            }
-        };
-        
-        reader.readAsText(file);
-    }
-
-    restoreFromBackup() {
-        if (!this.pendingRestoreData) {
-            this.showNotification('Nenhum backup selecionado', 'error');
-            return;
-        }
-        
-        if (!confirm('ATENÇÃO: Isso substituirá TODOS os seus dados atuais. Tem certeza?')) {
-            return;
-        }
-        
-        try {
-            // Restaurar cadernos
-            this.notebooks = this.pendingRestoreData.data.notebooks || [];
-            
-            // Restaurar músicas carregadas
-            if (this.pendingRestoreData.data.music) {
-                this.tracks.uploaded = this.pendingRestoreData.data.music;
-                this.saveMusicSettings();
-            }
-            
-            // Restaurar configurações de fonte
-            if (this.pendingRestoreData.data.fontSettings) {
-                this.fontSettings = this.pendingRestoreData.data.fontSettings;
-            }
-            
-            // Restaurar palavras ignoradas
-            if (this.pendingRestoreData.data.ignoredWords) {
-                this.ignoredWords = new Set(this.pendingRestoreData.data.ignoredWords);
-            }
-            
-            // Salvar dados
-            this.saveData();
-            
-            // Atualizar interface
-            this.renderNotebooks();
-            
-            if (this.notebooks.length > 0) {
-                this.selectNotebook(this.notebooks[0].id);
-            } else {
-                this.clearEditor();
-            }
-            
-            this.showNotification('Backup restaurado com sucesso!', 'success');
-            document.getElementById('restoreModal').classList.remove('active');
-            
-            // Limpar dados pendentes
-            this.pendingRestoreData = null;
-            
-        } catch (error) {
-            console.error('Erro ao restaurar backup:', error);
-            this.showNotification('Erro ao restaurar backup', 'error');
-        }
-    }
-
-    // ========== GERENCIAMENTO DE NOTAS ==========
+    // ========== GERENCIAMENTO DE CADERNOS ==========
 
     renderNotebooks() {
         const container = document.getElementById('notebooksList');
@@ -399,21 +302,24 @@ class NotesApp {
                 <div class="empty-state">
                     <i class="fas fa-book-open"></i>
                     <p>Nenhum caderno</p>
-                    <p class="hint">Clique no + para criar um</p>
+                    <p class="hint">Crie seu primeiro espaço</p>
                 </div>
             `;
+            document.getElementById('sheetsSection').style.display = 'none';
             return;
         }
         
         this.notebooks.forEach(notebook => {
             const div = document.createElement('div');
             div.className = `notebook-item ${this.currentNotebook?.id === notebook.id ? 'active' : ''}`;
+            div.style.borderLeftColor = notebook.color || '#3498db';
+            
             div.innerHTML = `
                 <h3>${this.escapeHtml(notebook.name)}</h3>
                 <div class="notebook-date">${this.formatDate(notebook.updated)}</div>
                 <div class="notebook-actions">
                     <button class="notebook-action-btn edit" data-id="${notebook.id}">
-                        <i class="fas fa-edit"></i> Editar
+                        <i class="fas fa-edit"></i> Renomear
                     </button>
                     <button class="notebook-action-btn delete" data-id="${notebook.id}">
                         <i class="fas fa-trash"></i> Excluir
@@ -421,20 +327,17 @@ class NotesApp {
                 </div>
             `;
             
-            // Selecionar caderno
             div.onclick = (e) => {
                 if (!e.target.closest('.notebook-action-btn')) {
                     this.selectNotebook(notebook.id);
                 }
             };
             
-            // Botão editar
             div.querySelector('.edit').onclick = (e) => {
                 e.stopPropagation();
                 this.editNotebook(notebook.id);
             };
             
-            // Botão excluir
             div.querySelector('.delete').onclick = (e) => {
                 e.stopPropagation();
                 this.deleteNotebook(notebook.id);
@@ -442,127 +345,120 @@ class NotesApp {
             
             container.appendChild(div);
         });
-    }
-
-    editNotebook(notebookId) {
-        const notebook = this.notebooks.find(n => n.id === notebookId);
-        if (!notebook) return;
         
-        this.editingNotebookId = notebookId;
-        document.getElementById('editNotebookName').value = notebook.name;
-        document.getElementById('editNotebookModal').classList.add('active');
-        document.getElementById('editNotebookName').focus();
-    }
-
-    saveEditedNotebook() {
-        if (!this.editingNotebookId) return;
-        
-        const newName = document.getElementById('editNotebookName').value.trim();
-        if (!newName) {
-            this.showNotification('Digite um nome para o caderno', 'error');
-            return;
+        // Mostrar seção de folhas se houver caderno selecionado
+        if (this.currentNotebook) {
+            document.getElementById('sheetsSection').style.display = 'block';
+            this.renderSheets();
         }
-        
-        const notebook = this.notebooks.find(n => n.id === this.editingNotebookId);
-        if (notebook) {
-            notebook.name = newName;
-            notebook.updated = new Date().toISOString();
-            this.saveData();
-            this.renderNotebooks();
-            
-            if (this.currentNotebook?.id === this.editingNotebookId) {
-                document.getElementById('currentNotebookTitle').textContent = newName;
-            }
-            
-            this.showNotification(`Caderno renomeado para "${newName}"`);
-        }
-        
-        document.getElementById('editNotebookModal').classList.remove('active');
-        this.editingNotebookId = null;
-    }
-
-    deleteNotebook(notebookId) {
-        const notebook = this.notebooks.find(n => n.id === notebookId);
-        if (!notebook) return;
-        
-        // Não permitir deletar o último caderno
-        if (this.notebooks.length <= 1) {
-            this.showNotification('Não é possível deletar o último caderno!', 'error');
-            return;
-        }
-        
-        document.getElementById('confirmNotebookMessage').textContent = 
-            `Tem certeza que deseja excluir o caderno "${notebook.name}"? Todas as ${notebook.sheets?.length || 0} folhas serão perdidas!`;
-        
-        const modal = document.getElementById('confirmNotebookModal');
-        modal.classList.add('active');
-        
-        document.getElementById('confirmNotebookDeleteBtn').onclick = () => {
-            const notebookIndex = this.notebooks.findIndex(n => n.id === notebookId);
-            if (notebookIndex !== -1) {
-                const notebookName = this.notebooks[notebookIndex].name;
-                
-                // Se o caderno atual está sendo excluído, selecionar outro
-                if (this.currentNotebook?.id === notebookId) {
-                    const nextNotebookIndex = notebookIndex === 0 ? 1 : notebookIndex - 1;
-                    this.selectNotebook(this.notebooks[nextNotebookIndex].id);
-                }
-                
-                this.notebooks.splice(notebookIndex, 1);
-                this.saveData();
-                this.renderNotebooks();
-                
-                this.showNotification(`Caderno "${notebookName}" excluído com sucesso!`);
-            }
-            
-            modal.classList.remove('active');
-        };
-        
-        document.getElementById('cancelNotebookDeleteBtn').onclick = () => {
-            modal.classList.remove('active');
-        };
     }
 
     renderSheets() {
         const container = document.getElementById('sheetsList');
-        const stats = document.getElementById('totalSheets');
         
-        if (!this.currentNotebook || !this.currentNotebook.sheets) {
-            container.innerHTML = '<p class="no-sheets">Nenhuma folha</p>';
-            stats.textContent = '0 folhas';
+        if (!this.currentNotebook || !this.currentNotebook.sheets || this.currentNotebook.sheets.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-file"></i>
+                    <p>Nenhuma folha</p>
+                    <p class="hint">Clique no + para criar</p>
+                </div>
+            `;
             return;
         }
         
         container.innerHTML = '';
-        const sheets = this.currentNotebook.sheets;
         
-        sheets.forEach((sheet, index) => {
+        this.currentNotebook.sheets.forEach((sheet, index) => {
             const div = document.createElement('div');
-            div.className = `sheet-item ${this.currentSheet?.id === sheet.id ? 'active' : ''}`;
+            div.className = `sheet-item-compact ${this.currentSheet?.id === sheet.id ? 'active' : ''}`;
             div.innerHTML = `
-                <h4>${this.escapeHtml(sheet.title)}</h4>
-                <div class="sheet-date">${this.formatDate(sheet.updated)}</div>
-                <button class="delete-sheet" data-id="${sheet.id}" title="Excluir folha">
-                    <i class="fas fa-times"></i>
-                </button>
+                <i class="fas fa-file-lines"></i>
+                <span>${this.escapeHtml(sheet.title)}</span>
             `;
             
-            div.onclick = (e) => {
-                if (!e.target.closest('.delete-sheet')) {
-                    this.selectSheet(sheet.id);
-                }
+            div.onclick = () => {
+                this.selectSheet(sheet.id);
             };
             
-            const deleteBtn = div.querySelector('.delete-sheet');
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                this.showDeleteConfirm(sheet);
-            };
+            // Adicionar menu de contexto para exclusão
+            div.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.showSheetContextMenu(e, sheet);
+            });
             
             container.appendChild(div);
         });
         
-        stats.textContent = `${sheets.length} folha${sheets.length !== 1 ? 's' : ''}`;
+        // Atualizar contador
+        document.getElementById('currentNotebookCount').textContent = 
+            `${this.currentNotebook.sheets.length} ${this.currentNotebook.sheets.length === 1 ? 'folha' : 'folhas'}`;
+    }
+
+    showSheetContextMenu(e, sheet) {
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        menu.style.cssText = `
+            position: fixed;
+            top: ${e.clientY}px;
+            left: ${e.clientX}px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 10000;
+            padding: 8px 0;
+            min-width: 180px;
+        `;
+        
+        menu.innerHTML = `
+            <div class="menu-item" data-action="open">
+                <i class="fas fa-folder-open"></i>
+                <span>Abrir</span>
+            </div>
+            <div class="menu-item" data-action="rename">
+                <i class="fas fa-edit"></i>
+                <span>Renomear</span>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item danger" data-action="delete">
+                <i class="fas fa-trash"></i>
+                <span>Excluir</span>
+            </div>
+        `;
+        
+        document.body.appendChild(menu);
+        
+        // Fechar menu ao clicar fora
+        const closeMenu = () => {
+            document.body.removeChild(menu);
+            document.removeEventListener('click', closeMenu);
+        };
+        
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 100);
+        
+        // Ações do menu
+        menu.querySelectorAll('.menu-item').forEach(item => {
+            item.onclick = (e) => {
+                e.stopPropagation();
+                const action = item.dataset.action;
+                
+                switch(action) {
+                    case 'open':
+                        this.selectSheet(sheet.id);
+                        break;
+                    case 'rename':
+                        this.renameSheet(sheet);
+                        break;
+                    case 'delete':
+                        this.deleteSheet(sheet.id);
+                        break;
+                }
+                
+                closeMenu();
+            };
+        });
     }
 
     selectNotebook(id) {
@@ -576,7 +472,7 @@ class NotesApp {
         
         // Garantir que tenha sheets
         if (!notebook.sheets || notebook.sheets.length === 0) {
-            notebook.sheets = [this.createNewSheet('Folha 1')];
+            notebook.sheets = [this.createNewSheet('Primeira Página')];
             this.saveData();
         }
         
@@ -590,6 +486,9 @@ class NotesApp {
         if (notebook.sheets.length > 0) {
             this.selectSheet(notebook.sheets[0].id);
         }
+        
+        // Mostrar seção de folhas
+        document.getElementById('sheetsSection').style.display = 'block';
     }
 
     selectSheet(id) {
@@ -609,9 +508,12 @@ class NotesApp {
         
         // Carregar conteúdo
         const editor = document.getElementById('editor');
-        editor.innerHTML = sheet.content || '<p>Comece a escrever aqui...</p>';
+        editor.innerHTML = sheet.content || '<p class="placeholder">Comece a escrever sua história aqui...</p>';
         
-        // Aplicar configurações de fonte da folha
+        // Aplicar cor do texto
+        editor.style.color = this.currentTextColor;
+        
+        // Aplicar configurações de fonte
         if (sheet.fontSettings) {
             this.applyFontSettings(sheet.fontSettings);
         } else {
@@ -626,11 +528,9 @@ class NotesApp {
         }
         
         // Atualizar contadores
-        this.updateCharCount();
-        this.updateWordCount();
-        this.updateImageCount();
+        this.updateCounters();
         
-        // Renderizar lista de folhas
+        // Renderizar folhas
         this.renderSheets();
         
         // Focar no editor
@@ -640,16 +540,17 @@ class NotesApp {
         }, 100);
     }
 
-    createNotebook(name) {
+    createNotebook(name, color = '#1a1a2e') {
         const id = 'notebook-' + Date.now();
         const newNotebook = {
             id,
             name,
             cover: 'default.jpg',
             customCover: null,
+            color,
             created: new Date().toISOString(),
             updated: new Date().toISOString(),
-            sheets: [this.createNewSheet('Folha 1')]
+            sheets: [this.createNewSheet('Primeira Página')]
         };
         
         this.notebooks.push(newNotebook);
@@ -657,32 +558,72 @@ class NotesApp {
         this.renderNotebooks();
         this.selectNotebook(id);
         
-        this.showNotification(`Caderno "${name}" criado com sucesso!`);
+        this.showNotification('Caderno criado', `"${name}" está pronto para histórias.`, 'success');
     }
 
-    createNewSheet(title) {
+    createNewSheet(title, template = 'blank') {
+        let content = '<p class="placeholder">Comece a escrever sua história aqui...</p>';
+        
+        switch(template) {
+            case 'chapter':
+                content = `
+                    <h1 style="text-align: center; margin-bottom: 3em;">${title}</h1>
+                    <p style="text-indent: 2em;">Era uma vez...</p>
+                `;
+                break;
+            case 'poem':
+                content = `
+                    <div style="text-align: center; font-style: italic; line-height: 2;">
+                        <p>${title}</p>
+                        <br>
+                        <p>Verso por verso,</p>
+                        <p>Palavra por palavra,</p>
+                        <p>O poema nasce.</p>
+                    </div>
+                `;
+                break;
+            case 'diary':
+                content = `
+                    <h3 style="color: #7f8c8d; border-bottom: 1px solid #e0e0e0; padding-bottom: 0.5em;">
+                        ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </h3>
+                    <p style="margin-top: 2em;">Hoje foi um dia...</p>
+                `;
+                break;
+            case 'notes':
+                content = `
+                    <h3>${title}</h3>
+                    <ul>
+                        <li>Primeira ideia</li>
+                        <li>Segunda ideia</li>
+                        <li>Terceira ideia</li>
+                    </ul>
+                `;
+                break;
+        }
+        
         return {
             id: 'sheet-' + Date.now(),
             title,
-            content: '<p>Comece a escrever aqui...</p>',
+            content,
             created: new Date().toISOString(),
             updated: new Date().toISOString(),
             images: [],
             customization: {
+                backgroundType: 'none',
+                backgroundColor: '#ffffff',
                 backgroundImage: null,
-                backgroundOpacity: 0.1,
-                backgroundBlur: 0,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
+                pageTone: '#ffffff',
+                marginSize: 'normal'
             },
             fontSettings: { ...this.fontSettings }
         };
     }
 
-    addSheet(title) {
+    addSheet(title, template = 'blank') {
         if (!this.currentNotebook) return;
         
-        const newSheet = this.createNewSheet(title);
+        const newSheet = this.createNewSheet(title, template);
         this.currentNotebook.sheets.push(newSheet);
         this.currentNotebook.updated = new Date().toISOString();
         
@@ -690,7 +631,28 @@ class NotesApp {
         this.renderSheets();
         this.selectSheet(newSheet.id);
         
-        this.showNotification(`Folha "${title}" criada com sucesso!`);
+        this.showNotification('Folha criada', `"${title}" foi adicionada ao caderno.`, 'success');
+    }
+
+    renameSheet(sheet) {
+        const newTitle = prompt('Novo título da folha:', sheet.title);
+        if (newTitle && newTitle.trim() && newTitle !== sheet.title) {
+            sheet.title = newTitle.trim();
+            sheet.updated = new Date().toISOString();
+            
+            if (this.currentNotebook) {
+                this.currentNotebook.updated = new Date().toISOString();
+            }
+            
+            this.saveData();
+            this.renderSheets();
+            
+            if (this.currentSheet?.id === sheet.id) {
+                document.getElementById('currentSheetTitle').textContent = newTitle;
+            }
+            
+            this.showNotification('Folha renomeada', `Agora se chama "${newTitle}".`, 'info');
+        }
     }
 
     deleteSheet(sheetId) {
@@ -703,33 +665,107 @@ class NotesApp {
         
         // Não permitir deletar a última folha
         if (this.currentNotebook.sheets.length <= 1) {
-            this.showNotification('Não é possível deletar a última folha!', 'error');
+            this.showNotification('Ação não permitida', 'Um caderno precisa ter pelo menos uma folha.', 'warning');
             return;
         }
         
-        this.currentNotebook.sheets.splice(sheetIndex, 1);
-        this.currentNotebook.updated = new Date().toISOString();
-        
-        // Selecionar a primeira folha disponível
-        this.selectSheet(this.currentNotebook.sheets[0].id);
-        
-        this.saveData();
-        this.renderSheets();
-        
-        this.showNotification(`Folha "${sheetTitle}" excluída com sucesso!`);
+        this.showConfirm(
+            'Excluir folha',
+            `Tem certeza que deseja excluir "${sheetTitle}"? Esta ação não pode ser desfeita.`,
+            () => {
+                this.currentNotebook.sheets.splice(sheetIndex, 1);
+                this.currentNotebook.updated = new Date().toISOString();
+                
+                // Selecionar outra folha
+                const nextSheetIndex = Math.min(sheetIndex, this.currentNotebook.sheets.length - 1);
+                this.selectSheet(this.currentNotebook.sheets[nextSheetIndex].id);
+                
+                this.saveData();
+                this.renderSheets();
+                
+                this.showNotification('Folha excluída', `"${sheetTitle}" foi removida permanentemente.`, 'info');
+            }
+        );
     }
+
+    deleteNotebook(notebookId) {
+        const notebook = this.notebooks.find(n => n.id === notebookId);
+        if (!notebook) return;
+        
+        // Não permitir deletar o último caderno
+        if (this.notebooks.length <= 1) {
+            this.showNotification('Ação não permitida', 'Você precisa ter pelo menos um caderno.', 'warning');
+            return;
+        }
+        
+        this.showConfirm(
+            'Excluir caderno',
+            `Tem certeza que deseja excluir "${notebook.name}"? Todas as ${notebook.sheets?.length || 0} folhas serão perdidas permanentemente.`,
+            () => {
+                const notebookIndex = this.notebooks.findIndex(n => n.id === notebookId);
+                if (notebookIndex !== -1) {
+                    const notebookName = this.notebooks[notebookIndex].name;
+                    
+                    // Se o caderno atual está sendo excluído, selecionar outro
+                    if (this.currentNotebook?.id === notebookId) {
+                        const nextNotebookIndex = notebookIndex === 0 ? 1 : notebookIndex - 1;
+                        this.selectNotebook(this.notebooks[nextNotebookIndex].id);
+                    }
+                    
+                    this.notebooks.splice(notebookIndex, 1);
+                    this.saveData();
+                    this.renderNotebooks();
+                    
+                    this.showNotification('Caderno excluído', `"${notebookName}" e todas as suas folhas foram removidas.`, 'info');
+                }
+            }
+        );
+    }
+
+    editNotebook(notebookId) {
+        const notebook = this.notebooks.find(n => n.id === notebookId);
+        if (!notebook) return;
+        
+        this.editingNotebookId = notebookId;
+        
+        const newName = prompt('Novo nome do caderno:', notebook.name);
+        if (newName && newName.trim() && newName !== notebook.name) {
+            notebook.name = newName.trim();
+            notebook.updated = new Date().toISOString();
+            
+            this.saveData();
+            this.renderNotebooks();
+            
+            if (this.currentNotebook?.id === notebookId) {
+                document.getElementById('currentNotebookTitle').textContent = newName;
+            }
+            
+            this.showNotification('Caderno renomeado', `Agora se chama "${newName}".`, 'success');
+        }
+        
+        this.editingNotebookId = null;
+    }
+
+    // ========== EDITOR E FORMATAÇÃO ==========
 
     saveContent() {
         if (!this.currentSheet) return;
         
-        const content = document.getElementById('editor').innerHTML;
-        this.currentSheet.content = content;
+        const editor = document.getElementById('editor');
+        const content = editor.innerHTML;
+        
+        // Remover placeholder se existir
+        if (content.includes('placeholder')) {
+            editor.innerHTML = content.replace('placeholder', '');
+        }
+        
+        this.currentSheet.content = editor.innerHTML;
         this.currentSheet.updated = new Date().toISOString();
         
         // Salvar configurações de fonte atuais
         this.currentSheet.fontSettings = { ...this.fontSettings };
         
-        // Extrair imagens do conteúdo
+        // Extrair imagens
         this.extractImagesFromContent();
         
         if (this.currentNotebook) {
@@ -738,9 +774,214 @@ class NotesApp {
         
         this.saveData();
         this.updateLastSaved();
-        this.unsavedChanges = false;
-        document.getElementById('saveBtn').classList.remove('unsaved');
-        this.showNotification('Salvo com sucesso!');
+        
+        this.showNotification('História guardada', 'Seu progresso foi salvo com segurança.', 'success');
+    }
+
+    saveCurrentContent() {
+        if (this.currentSheet) {
+            const content = document.getElementById('editor').innerHTML;
+            this.currentSheet.content = content;
+            this.currentSheet.updated = new Date().toISOString();
+            this.extractImagesFromContent();
+            this.currentSheet.fontSettings = { ...this.fontSettings };
+        }
+    }
+
+    setupAutoSave() {
+        const editor = document.getElementById('editor');
+        let saveTimeout;
+        
+        editor.addEventListener('input', () => {
+            this.updateCounters();
+            this.checkUnsavedChanges();
+            
+            // Auto-save após 3 segundos de inatividade
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                if (this.unsavedChanges && this.currentSheet) {
+                    this.saveCurrentContent();
+                    this.saveData();
+                    console.log('ESCRITY: Auto-save realizado');
+                }
+            }, 3000);
+        });
+    }
+
+    updateCounters() {
+        const editor = document.getElementById('editor');
+        const text = editor.textContent || '';
+        
+        // Contagem de caracteres
+        const charCount = text.length;
+        document.getElementById('charCount').textContent = `${charCount.toLocaleString()} caracteres`;
+        
+        // Contagem de palavras
+        const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+        const wordCount = words.length;
+        document.getElementById('wordCount').textContent = wordCount.toLocaleString();
+    }
+
+    updateLastSaved() {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('pt-BR', { 
+            hour: '2-digit', 
+            minute: '2-digit'
+        });
+        document.getElementById('lastSaved').textContent = `Salvo às ${timeStr}`;
+    }
+
+    checkUnsavedChanges() {
+        if (!this.currentSheet) return;
+        
+        const currentContent = document.getElementById('editor').innerHTML;
+        if (currentContent !== this.currentSheet.content) {
+            this.unsavedChanges = true;
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> <span class="save-text">Guardar *</span>';
+            saveBtn.classList.add('unsaved');
+        }
+    }
+
+    applyFormatting(command, value = null) {
+        document.execCommand(command, false, value);
+        this.unsavedChanges = true;
+        this.checkUnsavedChanges();
+        
+        // Aplicar cor do texto se for seleção de texto
+        if (command === 'foreColor' || command === 'hiliteColor') {
+            const editor = document.getElementById('editor');
+            editor.focus();
+        }
+    }
+
+    changeTextColor() {
+        const colorPicker = document.getElementById('textColorPicker');
+        this.currentTextColor = colorPicker.value;
+        
+        const editor = document.getElementById('editor');
+        editor.style.color = this.currentTextColor;
+        
+        this.unsavedChanges = true;
+        this.checkUnsavedChanges();
+        
+        // Salvar preferência
+        this.saveData();
+    }
+
+    insertImage() {
+        const fileInput = document.getElementById('imageFile');
+        fileInput.click();
+        
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.startsWith('image/')) {
+                this.showNotification('Formato inválido', 'Selecione apenas arquivos de imagem.', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.alt = 'Imagem inserida';
+                img.className = 'responsive';
+                
+                // Inserir no editor
+                const editor = document.getElementById('editor');
+                const selection = window.getSelection();
+                
+                if (selection.rangeCount) {
+                    const range = selection.getRangeAt(0);
+                    range.insertNode(img);
+                    
+                    // Adicionar parágrafo após a imagem
+                    const p = document.createElement('p');
+                    range.setStartAfter(img);
+                    range.insertNode(p);
+                    
+                    // Mover cursor para o novo parágrafo
+                    range.setStart(p, 0);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } else {
+                    editor.appendChild(img);
+                    editor.appendChild(document.createElement('p'));
+                }
+                
+                editor.focus();
+                this.unsavedChanges = true;
+                this.checkUnsavedChanges();
+                
+                this.showNotification('Imagem adicionada', 'A imagem foi inserida em sua história.', 'success');
+            };
+            
+            reader.readAsDataURL(file);
+        };
+    }
+
+    insertDivider() {
+        const hr = document.createElement('hr');
+        
+        const editor = document.getElementById('editor');
+        const selection = window.getSelection();
+        
+        if (selection.rangeCount) {
+            const range = selection.getRangeAt(0);
+            range.insertNode(hr);
+            
+            // Adicionar parágrafo após o divisor
+            const p = document.createElement('p');
+            range.setStartAfter(hr);
+            range.insertNode(p);
+            
+            // Mover cursor para o novo parágrafo
+            range.setStart(p, 0);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            editor.appendChild(hr);
+            editor.appendChild(document.createElement('p'));
+        }
+        
+        editor.focus();
+        this.unsavedChanges = true;
+        this.checkUnsavedChanges();
+    }
+
+    insertQuote() {
+        const blockquote = document.createElement('blockquote');
+        blockquote.innerHTML = '<p>Sua citação aqui...</p>';
+        
+        const editor = document.getElementById('editor');
+        const selection = window.getSelection();
+        
+        if (selection.rangeCount) {
+            const range = selection.getRangeAt(0);
+            range.insertNode(blockquote);
+            
+            // Adicionar parágrafo após a citação
+            const p = document.createElement('p');
+            range.setStartAfter(blockquote);
+            range.insertNode(p);
+            
+            // Mover cursor para o novo parágrafo
+            range.setStart(p, 0);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            editor.appendChild(blockquote);
+            editor.appendChild(document.createElement('p'));
+        }
+        
+        editor.focus();
+        this.unsavedChanges = true;
+        this.checkUnsavedChanges();
     }
 
     extractImagesFromContent() {
@@ -751,212 +992,767 @@ class NotesApp {
         const imageData = [];
         
         images.forEach(img => {
-            // Para imagens base64, armazenar apenas referência
+            // Para imagens base64
             if (img.src.startsWith('data:')) {
-                // Já está no conteúdo, não precisa duplicar
-                return;
+                imageData.push({
+                    src: img.src,
+                    alt: img.alt || '',
+                    class: img.className || ''
+                });
             }
-            
-            imageData.push({
-                src: img.src,
-                alt: img.alt || '',
-                class: img.className || ''
-            });
         });
         
         this.currentSheet.images = imageData;
-    }
-
-    autoSave() {
-        if (!this.currentSheet || !this.unsavedChanges) return;
-        
-        const content = document.getElementById('editor').innerHTML;
-        if (content !== this.currentSheet.content) {
-            this.saveContent();
-            console.log('Auto-save realizado:', new Date().toLocaleTimeString());
-        }
-    }
-
-    saveCurrentContent() {
-        if (this.currentSheet) {
-            const content = document.getElementById('editor').innerHTML;
-            this.currentSheet.content = content;
-            this.currentSheet.updated = new Date().toISOString();
-            this.extractImagesFromContent();
-            
-            // Salvar configurações de fonte atuais
-            this.currentSheet.fontSettings = { ...this.fontSettings };
-        }
-    }
-
-    updateCover(coverType, customCover = null) {
-        if (!this.currentNotebook) return;
-        
-        this.currentNotebook.cover = coverType;
-        this.currentNotebook.customCover = customCover;
-        
-        const coverImg = document.getElementById('currentCover');
-        
-        if (coverType === 'custom' && customCover) {
-            coverImg.src = customCover;
-        } else {
-            // Usar capa padrão
-            coverImg.src = 'assets/capas/default.jpg';
-        }
-        
-        this.saveData();
-    }
-
-    showCoverModal() {
-        const modal = document.getElementById('coverModal');
-        modal.classList.add('active');
-        
-        // Resetar opções
-        const coverOptions = document.querySelectorAll('.cover-option');
-        coverOptions.forEach(option => {
-            option.classList.remove('active');
-            if (option.dataset.cover === (this.currentNotebook?.cover === 'default.jpg' ? 'default' : 'custom')) {
-                option.classList.add('active');
-            }
-        });
-        
-        // Mostrar/ocultar upload personalizado
-        const customUpload = document.getElementById('coverCustomUpload');
-        const preview = document.getElementById('coverPreview');
-        
-        if (this.currentNotebook?.cover === 'custom' && this.currentNotebook.customCover) {
-            customUpload.style.display = 'block';
-            preview.style.display = 'block';
-            document.getElementById('previewCover').src = this.currentNotebook.customCover;
-        } else {
-            customUpload.style.display = 'none';
-            preview.style.display = 'none';
-        }
-    }
-
-    applyCover() {
-        const selectedCover = document.querySelector('.cover-option.active').dataset.cover;
-        
-        if (selectedCover === 'custom') {
-            const customCover = this.currentNotebook?.customCover;
-            if (customCover) {
-                this.updateCover('custom', customCover);
-                this.showNotification('Capa personalizada aplicada!');
-            } else {
-                this.showNotification('Selecione uma imagem primeiro', 'warning');
-                return;
-            }
-        } else {
-            this.updateCover('default.jpg', null);
-            this.showNotification('Capa padrão aplicada!');
-        }
-        
-        document.getElementById('coverModal').classList.remove('active');
-    }
-
-    handleCoverUpload(file) {
-        if (!file || !file.type.startsWith('image/')) {
-            this.showNotification('Selecione um arquivo de imagem válido', 'error');
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const preview = document.getElementById('previewCover');
-            preview.src = e.target.result;
-            document.getElementById('coverPreview').style.display = 'block';
-            
-            // Atualizar capa atual
-            if (this.currentNotebook) {
-                this.currentNotebook.customCover = e.target.result;
-                this.updateCover('custom', e.target.result);
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    updateCharCount() {
-        const editor = document.getElementById('editor');
-        const text = editor.textContent;
-        const charCount = text.length;
-        document.getElementById('charCount').textContent = `${charCount.toLocaleString()} caracteres`;
-        document.getElementById('totalChars').textContent = `${charCount.toLocaleString()} caracteres`;
-    }
-
-    updateWordCount() {
-        const editor = document.getElementById('editor');
-        const text = editor.textContent.trim();
-        const wordCount = text === '' ? 0 : text.split(/\s+/).length;
-        document.getElementById('wordCount').textContent = `${wordCount.toLocaleString()} palavras`;
-    }
-
-    updateImageCount() {
-        const editor = document.getElementById('editor');
-        const images = editor.querySelectorAll('img');
-        const imageCount = images.length;
-        document.getElementById('imageCount').textContent = `${imageCount} imagem${imageCount !== 1 ? 'ns' : ''}`;
-    }
-
-    updateLastSaved() {
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('pt-BR', { 
-            hour: '2-digit', 
-            minute: '2-digit'
-        });
-        document.getElementById('lastSaved').textContent = `Salvo: ${timeStr}`;
     }
 
     clearEditor() {
         document.getElementById('currentNotebookTitle').textContent = 'Selecione um caderno';
         document.getElementById('currentSheetTitle').textContent = 'Nenhuma folha selecionada';
         document.getElementById('sheetDate').textContent = '';
-        document.getElementById('editor').innerHTML = '<p>Selecione uma folha para começar a escrever...</p>';
+        document.getElementById('editor').innerHTML = '<p class="placeholder">Selecione uma folha para começar a escrever...</p>';
         this.clearSheetCustomization();
-        this.updateCharCount();
-        this.updateWordCount();
-        this.updateImageCount();
+        this.updateCounters();
+        document.getElementById('currentNotebookCount').textContent = '0 folhas';
+    }
+
+    // ========== PERSONALIZAÇÃO ==========
+
+    showCustomizeSheetModal() {
+        if (!this.currentSheet) {
+            this.showNotification('Selecione uma folha', 'Escolha uma folha para personalizar.', 'warning');
+            return;
+        }
+        
+        const modal = document.getElementById('customizeSheetModal');
+        modal.classList.add('active');
+        
+        // Carregar configurações atuais
+        const customization = this.currentSheet.customization || this.currentCustomization;
+        
+        // Selecionar opções atuais
+        document.querySelectorAll('.bg-option').forEach(option => {
+            option.classList.remove('active');
+            if (option.dataset.bg === customization.backgroundType) {
+                option.classList.add('active');
+            }
+        });
+        
+        document.querySelectorAll('.color-tone').forEach(tone => {
+            tone.classList.remove('active');
+            if (tone.dataset.tone === customization.pageTone) {
+                tone.classList.add('active');
+            }
+        });
+        
+        document.querySelectorAll('.margin-option').forEach(option => {
+            option.classList.remove('active');
+            if (option.dataset.margin === customization.marginSize) {
+                option.classList.add('active');
+            }
+        });
+    }
+
+    applySheetCustomization(customization) {
+        const editor = document.getElementById('editor');
+        
+        // Aplicar fundo
+        if (customization.backgroundType === 'paper') {
+            editor.style.background = 'var(--bg-paper)';
+            editor.style.backgroundImage = `
+                linear-gradient(90deg, transparent 79px, #abced4 79px, #abced4 81px, transparent 81px),
+                linear-gradient(#eee .1em, transparent .1em)
+            `;
+            editor.style.backgroundSize = '100% 1.2em';
+        } else if (customization.backgroundType === 'dark') {
+            editor.style.background = 'var(--bg-night)';
+            editor.style.backgroundImage = 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0)';
+            editor.style.backgroundSize = '20px 20px';
+        } else if (customization.backgroundType === 'custom' && customization.backgroundImage) {
+            editor.style.backgroundImage = `url("${customization.backgroundImage}")`;
+            editor.style.backgroundSize = 'cover';
+            editor.style.backgroundPosition = 'center';
+        } else {
+            editor.style.background = 'none';
+            editor.style.backgroundImage = 'none';
+        }
+        
+        // Aplicar tom da página
+        if (customization.backgroundType === 'none') {
+            editor.style.backgroundColor = customization.pageTone;
+        }
+        
+        // Aplicar margens
+        switch(customization.marginSize) {
+            case 'wide':
+                editor.style.padding = '4rem';
+                break;
+            case 'normal':
+                editor.style.padding = '3rem';
+                break;
+            case 'narrow':
+                editor.style.padding = '2rem';
+                break;
+            case 'full':
+                editor.style.padding = '1rem';
+                break;
+        }
     }
 
     clearSheetCustomization() {
         const editor = document.getElementById('editor');
+        editor.style.background = 'none';
+        editor.style.backgroundColor = '#ffffff';
         editor.style.backgroundImage = 'none';
-        editor.style.backgroundColor = 'white';
-        editor.style.backgroundBlur = 'none';
-        editor.style.opacity = '1';
-        editor.style.filter = 'none';
+        editor.style.padding = '3rem';
     }
 
-    showNotification(message, type = 'success') {
-        const notification = document.getElementById('notification');
-        const text = document.getElementById('notificationText');
+    saveCustomization() {
+        if (!this.currentSheet) return;
         
-        text.textContent = message;
+        const backgroundType = document.querySelector('.bg-option.active').dataset.bg;
+        const pageTone = document.querySelector('.color-tone.active').dataset.tone;
+        const marginSize = document.querySelector('.margin-option.active').dataset.margin;
+        
+        const customization = {
+            backgroundType,
+            backgroundColor: '#ffffff',
+            backgroundImage: backgroundType === 'custom' ? this.currentCustomization.backgroundImage : null,
+            pageTone,
+            marginSize
+        };
+        
+        this.currentSheet.customization = customization;
+        this.applySheetCustomization(customization);
+        
+        this.saveData();
+        document.getElementById('customizeSheetModal').classList.remove('active');
+        
+        this.showNotification('Ambiente configurado', 'Sua página foi personalizada.', 'success');
+    }
+
+    handleBackgroundUpload(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            this.showNotification('Formato inválido', 'Selecione apenas arquivos de imagem.', 'error');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.currentCustomization.backgroundImage = e.target.result;
+            
+            // Atualizar visualização
+            const customOption = document.querySelector('.bg-option[data-bg="custom"] .bg-preview');
+            customOption.style.backgroundImage = `url("${e.target.result}")`;
+            customOption.style.backgroundSize = 'cover';
+            customOption.innerHTML = '';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ========== CONFIGURAÇÕES DE FONTE ==========
+
+    showFontSettingsModal() {
+        if (!this.currentSheet) {
+            this.showNotification('Selecione uma folha', 'Escolha uma folha para configurar.', 'warning');
+            return;
+        }
+        
+        const modal = document.getElementById('fontSettingsModal');
+        modal.classList.add('active');
+        
+        // Carregar configurações atuais
+        const settings = this.currentSheet.fontSettings || this.fontSettings;
+        
+        // Selecionar fonte atual
+        document.querySelectorAll('.font-option').forEach(option => {
+            option.classList.remove('active');
+            if (option.dataset.font === settings.fontFamily) {
+                option.classList.add('active');
+            }
+        });
+        
+        // Atualizar sliders
+        document.getElementById('fontSize').value = settings.fontSize;
+        document.getElementById('lineHeight').value = settings.lineHeight;
+        
+        this.updateFontPreview();
+    }
+
+    updateFontPreview() {
+        const previewArea = document.getElementById('fontPreviewArea');
+        const fontFamily = document.querySelector('.font-option.active').dataset.font;
+        const fontSize = document.getElementById('fontSize').value;
+        const lineHeight = document.getElementById('lineHeight').value;
+        
+        previewArea.style.fontFamily = fontFamily;
+        previewArea.style.fontSize = `${fontSize}px`;
+        previewArea.style.lineHeight = lineHeight;
+        
+        // Atualizar valores exibidos
+        document.getElementById('fontSizeValue').textContent = `${fontSize}px`;
+        document.getElementById('lineHeightValue').textContent = lineHeight;
+    }
+
+    applyFontSettings() {
+        const fontFamily = document.querySelector('.font-option.active').dataset.font;
+        const fontSize = parseInt(document.getElementById('fontSize').value);
+        const lineHeight = parseFloat(document.getElementById('lineHeight').value);
+        
+        this.fontSettings = {
+            fontFamily,
+            fontSize,
+            lineHeight
+        };
+        
+        // Aplicar ao editor
+        const editor = document.getElementById('editor');
+        editor.style.fontFamily = fontFamily;
+        editor.style.fontSize = `${fontSize}px`;
+        editor.style.lineHeight = lineHeight;
+        
+        // Salvar na folha atual
+        if (this.currentSheet) {
+            this.currentSheet.fontSettings = { ...this.fontSettings };
+            this.saveData();
+        }
+        
+        document.getElementById('fontSettingsModal').classList.remove('active');
+        this.showNotification('Escrita configurada', 'Seu estilo de escrita foi aplicado.', 'success');
+    }
+
+    // ========== MÚSICA ==========
+
+    async loadDefaultMusic() {
+        try {
+            const config = JSON.parse(document.getElementById('default-music-config').textContent);
+            this.tracks = {
+                focus: config.focus || [],
+                creative: config.creative || [],
+                ambient: config.ambient || [],
+                uploaded: []
+            };
+            
+            // Renderizar trilhas
+            this.renderTracks();
+            
+        } catch (error) {
+            console.error('ESCRITY: Erro ao carregar músicas:', error);
+            this.tracks = { focus: [], creative: [], ambient: [], uploaded: [] };
+        }
+    }
+
+    setupAudioEvents() {
+        this.audio.addEventListener('timeupdate', () => this.updateProgress());
+        this.audio.addEventListener('loadedmetadata', () => {
+            document.getElementById('duration').textContent = this.formatTime(this.audio.duration);
+        });
+        this.audio.addEventListener('ended', () => this.playNextTrack());
+        this.audio.addEventListener('play', () => this.updatePlayState(true));
+        this.audio.addEventListener('pause', () => this.updatePlayState(false));
+        this.audio.addEventListener('error', () => {
+            this.showNotification('Erro de áudio', 'Não foi possível reproduzir a trilha.', 'error');
+        });
+    }
+
+    renderTracks() {
+        // Renderizar trilhas de foco
+        const focusContainer = document.getElementById('focusTracks');
+        focusContainer.innerHTML = this.tracks.focus.map((track, index) => `
+            <div class="track-item-library ${this.currentTrack?.id === track.id ? 'playing' : ''}" data-id="${track.id}">
+                <div class="track-number">${index + 1}</div>
+                <div class="track-details-library">
+                    <div class="title">${track.title}</div>
+                    <div class="artist">${track.artist}</div>
+                </div>
+                <div class="track-duration-library">${track.duration}</div>
+            </div>
+        `).join('');
+
+        // Renderizar outras bibliotecas
+        ['creative', 'ambient'].forEach(library => {
+            const container = document.getElementById(library + 'Tracks');
+            if (container) {
+                container.innerHTML = this.tracks[library].map((track, index) => `
+                    <div class="track-item-library ${this.currentTrack?.id === track.id ? 'playing' : ''}" data-id="${track.id}">
+                        <div class="track-number">${index + 1}</div>
+                        <div class="track-details-library">
+                            <div class="title">${track.title}</div>
+                            <div class="artist">${track.artist}</div>
+                        </div>
+                        <div class="track-duration-library">${track.duration}</div>
+                    </div>
+                `).join('');
+            }
+        });
+    }
+
+    playTrack(track) {
+        this.currentTrack = track;
+        
+        // Tentar carregar a música
+        this.audio.src = track.url;
+        
+        this.audio.play().then(() => {
+            // Atualizar UI
+            document.getElementById('currentTrackTitle').textContent = track.title;
+            document.getElementById('currentTrackArtist').textContent = track.artist;
+            document.getElementById('playPause').innerHTML = '<i class="fas fa-pause"></i>';
+            this.isPlaying = true;
+            
+            // Atualizar estado da faixa
+            this.updateTrackStates();
+            
+            // Atualizar status
+            document.getElementById('musicStatusText').textContent = 'Tocando';
+            document.querySelector('#musicStatus i').style.color = '#9b59b6';
+            
+        }).catch(e => {
+            console.error('ESCRITY: Erro ao reproduzir:', e);
+            this.showNotification('Erro de reprodução', 'Não foi possível tocar a trilha selecionada.', 'error');
+        });
+    }
+
+    updatePlayState(playing) {
+        this.isPlaying = playing;
+        const playBtn = document.getElementById('playPause');
+        
+        if (playing) {
+            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            playBtn.title = 'Pausar';
+            document.getElementById('musicStatusText').textContent = 'Tocando';
+            document.querySelector('#musicStatus i').style.color = '#9b59b6';
+        } else {
+            playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            playBtn.title = 'Reproduzir';
+            document.getElementById('musicStatusText').textContent = 'Pausado';
+            document.querySelector('#musicStatus i').style.color = '';
+        }
+    }
+
+    playPause() {
+        if (!this.currentTrack) {
+            // Tocar a primeira trilha da biblioteca atual
+            const tracks = this.tracks[this.currentLibrary];
+            if (tracks && tracks.length > 0) {
+                this.playTrack(tracks[0]);
+            }
+            return;
+        }
+        
+        if (this.isPlaying) {
+            this.audio.pause();
+        } else {
+            this.audio.play().catch(e => {
+                console.error('ESCRITY: Erro ao retomar:', e);
+            });
+        }
+    }
+
+    playNextTrack() {
+        const tracks = this.tracks[this.currentLibrary];
+        if (!tracks || tracks.length === 0) return;
+        
+        const currentIndex = tracks.findIndex(t => t.id === this.currentTrack?.id);
+        const nextIndex = (currentIndex + 1) % tracks.length;
+        
+        if (tracks[nextIndex]) {
+            this.playTrack(tracks[nextIndex]);
+        }
+    }
+
+    playPrevTrack() {
+        const tracks = this.tracks[this.currentLibrary];
+        if (!tracks || tracks.length === 0) return;
+        
+        const currentIndex = tracks.findIndex(t => t.id === this.currentTrack?.id);
+        const prevIndex = currentIndex <= 0 ? tracks.length - 1 : currentIndex - 1;
+        
+        if (tracks[prevIndex]) {
+            this.playTrack(tracks[prevIndex]);
+        }
+    }
+
+    updateProgress() {
+        if (!this.audio.duration || isNaN(this.audio.duration)) return;
+        
+        const progress = (this.audio.currentTime / this.audio.duration) * 100;
+        document.getElementById('progressFill').style.width = `${progress}%`;
+        document.getElementById('currentTime').textContent = this.formatTime(this.audio.currentTime);
+    }
+
+    formatTime(seconds) {
+        if (isNaN(seconds)) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    updateTrackStates() {
+        document.querySelectorAll('.track-item-library').forEach(item => {
+            item.classList.remove('playing');
+        });
+        
+        if (this.currentTrack) {
+            const currentItem = document.querySelector(`.track-item-library[data-id="${this.currentTrack.id}"]`);
+            if (currentItem) {
+                currentItem.classList.add('playing');
+            }
+        }
+    }
+
+    updateVolume(e) {
+        const volumeBar = document.getElementById('volumeBar');
+        const rect = volumeBar.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, x / rect.width));
+        
+        this.audio.volume = percentage;
+        document.getElementById('volumeFill').style.width = `${percentage * 100}%`;
+        
+        // Salvar preferência
+        this.saveMusicSettings();
+    }
+
+    updateProgressBar(e) {
+        const progressBar = document.getElementById('progressBar');
+        const rect = progressBar.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, x / rect.width));
+        
+        if (this.audio.duration && !isNaN(this.audio.duration)) {
+            this.audio.currentTime = percentage * this.audio.duration;
+        }
+    }
+
+    switchLibrary(libraryName) {
+        this.currentLibrary = libraryName;
+        
+        // Atualizar tabs
+        document.querySelectorAll('.library-tab').forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.dataset.library === libraryName) {
+                tab.classList.add('active');
+            }
+        });
+        
+        // Mostrar trilhas da biblioteca selecionada
+        document.querySelectorAll('.tracks-list').forEach(list => {
+            list.style.display = 'none';
+        });
+        
+        document.getElementById(libraryName + 'Tracks').style.display = 'block';
+    }
+
+    handleMusicUpload(files) {
+        Array.from(files).forEach(file => {
+            if (!file.type.startsWith('audio/')) {
+                this.showNotification('Formato inválido', 'Apenas arquivos de áudio são permitidos.', 'error');
+                return;
+            }
+            
+            if (file.size > 50 * 1024 * 1024) {
+                this.showNotification('Arquivo grande', 'O arquivo é muito grande (máximo 50MB).', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const track = {
+                    id: 'uploaded-' + Date.now() + Math.random().toString(36).substr(2, 9),
+                    title: file.name.replace(/\.[^/.]+$/, ""),
+                    artist: 'Importado',
+                    duration: '--:--',
+                    url: e.target.result,
+                    type: 'uploaded'
+                };
+                
+                this.tracks.uploaded.push(track);
+                this.saveMusicSettings();
+                this.renderUploadedTracks();
+                
+                this.showNotification('Trilha importada', `"${file.name}" foi adicionada à sua biblioteca.`, 'success');
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    renderUploadedTracks() {
+        const container = document.getElementById('uploadedTracksList');
+        if (!container) return;
+        
+        container.innerHTML = this.tracks.uploaded.map((track, index) => `
+            <div class="track-item-library ${this.currentTrack?.id === track.id ? 'playing' : ''}" data-id="${track.id}">
+                <div class="track-number">${index + 1}</div>
+                <div class="track-details-library">
+                    <div class="title">${track.title}</div>
+                    <div class="artist">${track.artist}</div>
+                </div>
+                <div class="track-duration-library">${track.duration}</div>
+                <button class="delete-track" data-id="${track.id}" title="Remover">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `).join('');
+        
+        // Adicionar eventos de exclusão
+        container.querySelectorAll('.delete-track').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const trackId = btn.dataset.id;
+                this.deleteUploadedTrack(trackId);
+            };
+        });
+        
+        // Adicionar eventos de clique
+        container.querySelectorAll('.track-item-library').forEach(item => {
+            item.onclick = (e) => {
+                if (!e.target.closest('.delete-track')) {
+                    const trackId = item.dataset.id;
+                    const track = this.tracks.uploaded.find(t => t.id === trackId);
+                    if (track) {
+                        this.playTrack(track);
+                    }
+                }
+            };
+        });
+    }
+
+    deleteUploadedTrack(trackId) {
+        const trackIndex = this.tracks.uploaded.findIndex(track => track.id === trackId);
+        if (trackIndex !== -1) {
+            const track = this.tracks.uploaded[trackIndex];
+            
+            // Se a música que está sendo excluída está tocando
+            if (this.currentTrack && this.currentTrack.id === trackId) {
+                this.audio.pause();
+                this.currentTrack = null;
+                this.updatePlayState(false);
+            }
+            
+            this.tracks.uploaded.splice(trackIndex, 1);
+            this.saveMusicSettings();
+            this.renderUploadedTracks();
+            
+            this.showNotification('Trilha removida', 'A trilha foi excluída da sua biblioteca.', 'info');
+        }
+    }
+
+    saveMusicSettings() {
+        const data = {
+            tracks: this.tracks.uploaded,
+            currentLibrary: this.currentLibrary,
+            volume: this.audio.volume
+        };
+        localStorage.setItem('escry-music', JSON.stringify(data));
+    }
+
+    loadSettings() {
+        // Carregar configurações de música
+        const savedMusic = localStorage.getItem('escry-music');
+        if (savedMusic) {
+            try {
+                const data = JSON.parse(savedMusic);
+                this.tracks.uploaded = data.tracks || [];
+                this.currentLibrary = data.currentLibrary || 'focus';
+                this.audio.volume = data.volume || 0.5;
+                
+                // Atualizar volume
+                document.getElementById('volumeFill').style.width = `${this.audio.volume * 100}%`;
+                
+                // Renderizar trilhas importadas
+                this.renderUploadedTracks();
+                
+                // Ativar biblioteca salva
+                this.switchLibrary(this.currentLibrary);
+                
+            } catch (e) {
+                console.error('ESCRITY: Erro ao carregar configurações de música:', e);
+            }
+        }
+        
+        // Carregar outras configurações
+        const savedSettings = localStorage.getItem('escry-settings');
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+                this.currentTextColor = settings.textColor || '#2c3e50';
+                
+                // Aplicar cor do texto
+                document.getElementById('textColorPicker').value = this.currentTextColor;
+                document.getElementById('editor').style.color = this.currentTextColor;
+                
+            } catch (e) {
+                console.error('ESCRITY: Erro ao carregar configurações:', e);
+            }
+        }
+    }
+
+    // ========== EXPORTAÇÃO ==========
+
+    showExportModal() {
+        if (!this.currentSheet) {
+            this.showNotification('Selecione uma folha', 'Escolha uma folha para exportar.', 'warning');
+            return;
+        }
+        
+        document.getElementById('exportModal').classList.add('active');
+    }
+
+    exportSheet(format) {
+        if (!this.currentSheet) return;
+        
+        const editor = document.getElementById('editor');
+        const content = editor.innerHTML;
+        const title = this.currentSheet.title;
+        const date = new Date().toLocaleDateString('pt-BR');
+        
+        let exportedContent = '';
+        let filename = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}`;
+        
+        switch(format) {
+            case 'txt':
+                exportedContent = this.stripHTML(content);
+                filename += '.txt';
+                break;
+                
+            case 'html':
+                exportedContent = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title} - ESCRITY</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.8;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #2c3e50;
+        }
+        h1, h2, h3 {
+            color: #1a1a2e;
+            margin-top: 2em;
+        }
+        blockquote {
+            border-left: 4px solid #3498db;
+            padding-left: 1.5em;
+            margin: 2em 0;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1em 0;
+        }
+        .metadata {
+            color: #95a5a6;
+            font-size: 0.9em;
+            border-top: 1px solid #e0e0e0;
+            padding-top: 1em;
+            margin-top: 3em;
+        }
+    </style>
+</head>
+<body>
+    <h1>${title}</h1>
+    <div class="metadata">
+        Exportado do ESCRITY em ${date}<br>
+        ${this.currentNotebook?.name ? `Caderno: ${this.currentNotebook.name}` : ''}
+    </div>
+    ${content}
+</body>
+</html>`;
+                filename += '.html';
+                break;
+                
+            case 'pdf':
+                // Para PDF, usar html2pdf.js (precisa ser incluído)
+                this.exportToPDF(title, content, date);
+                return;
+                
+            case 'docx':
+                // Para DOCX, seria necessário uma biblioteca adicional
+                this.showNotification('Exportação DOCX', 'Em desenvolvimento...', 'info');
+                return;
+        }
+        
+        // Criar e baixar arquivo
+        const blob = new Blob([exportedContent], { type: this.getMimeType(format) });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        document.getElementById('exportModal').classList.remove('active');
+        this.showNotification('Exportação concluída', `"${title}" foi exportado com sucesso.`, 'success');
+    }
+
+    stripHTML(html) {
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        return div.textContent || div.innerText || '';
+    }
+
+    getMimeType(format) {
+        const mimeTypes = {
+            'txt': 'text/plain',
+            'html': 'text/html',
+            'pdf': 'application/pdf',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        };
+        return mimeTypes[format] || 'text/plain';
+    }
+
+    exportToPDF(title, content, date) {
+        // Esta função requer a biblioteca html2pdf.js
+        // Para simplificar, vamos exportar como HTML
+        this.exportSheet('html');
+    }
+
+    // ========== UTILITÁRIOS ==========
+
+    showNotification(title, message, type = 'success') {
+        const notification = document.getElementById('notification');
+        const notificationTitle = document.getElementById('notificationTitle');
+        const notificationText = document.getElementById('notificationText');
+        
+        notificationTitle.textContent = title;
+        notificationText.textContent = message;
         notification.className = `notification ${type}`;
         notification.style.display = 'flex';
         
-        // Remover a notificação após 3 segundos
+        // Remover após 4 segundos
         setTimeout(() => {
             notification.classList.add('hiding');
             setTimeout(() => {
                 notification.style.display = 'none';
                 notification.classList.remove('hiding');
             }, 300);
-        }, 3000);
+        }, 4000);
     }
 
-    showDeleteConfirm(sheet) {
+    showConfirm(title, message, callback) {
         const modal = document.getElementById('confirmModal');
-        const message = document.getElementById('confirmMessage');
-        message.textContent = `Tem certeza que deseja excluir a folha "${sheet.title}"? Esta ação não pode ser desfeita.`;
+        const messageEl = document.getElementById('confirmMessage');
         
+        messageEl.textContent = message;
         modal.classList.add('active');
         
-        document.getElementById('confirmDeleteBtn').onclick = () => {
-            this.deleteSheet(sheet.id);
+        document.getElementById('confirmActionBtn').onclick = () => {
             modal.classList.remove('active');
+            if (callback) callback();
         };
         
-        document.getElementById('cancelDeleteBtn').onclick = () => {
+        document.getElementById('cancelConfirmBtn').onclick = () => {
             modal.classList.remove('active');
         };
     }
@@ -971,7 +1767,7 @@ class NotesApp {
             const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
             if (diffHours === 0) {
                 const diffMins = Math.floor(diffMs / (1000 * 60));
-                return diffMins < 1 ? 'Agora mesmo' : `${diffMins} min atrás`;
+                return diffMins < 1 ? 'Agora' : `${diffMins} min atrás`;
             }
             return `${diffHours} h atrás`;
         } else if (diffDays === 1) {
@@ -1002,514 +1798,431 @@ class NotesApp {
         selection.addRange(range);
     }
 
-    checkUnsavedChanges() {
-        if (!this.currentSheet) return;
-        
-        const currentContent = document.getElementById('editor').innerHTML;
-        if (currentContent !== this.currentSheet.content) {
-            this.unsavedChanges = true;
-            const saveBtn = document.getElementById('saveBtn');
-            saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar *';
-            saveBtn.classList.add('unsaved');
-        }
-    }
+    // ========== EVENT LISTENERS ==========
 
-    formatParagraph() {
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
+    setupEventListeners() {
+        console.log('ESCRITY: Configurando eventos...');
         
-        const range = selection.getRangeAt(0);
-        const selectedText = range.toString();
+        // ===== APP =====
+        document.getElementById('clearDataBtn').onclick = () => this.clearLocalData();
         
-        if (selectedText) {
-            // Aplicar parágrafo ao texto selecionado
-            const p = document.createElement('p');
-            p.textContent = selectedText;
-            range.deleteContents();
-            range.insertNode(p);
-        } else {
-            // Inserir novo parágrafo
-            document.execCommand('formatBlock', false, 'p');
-        }
-        
-        this.unsavedChanges = true;
-        this.checkUnsavedChanges();
-    }
-
-    ignoreCurrentWord() {
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-        
-        const range = selection.getRangeAt(0);
-        const selectedText = range.toString().trim();
-        
-        if (!selectedText) {
-            // Se nada está selecionado, selecionar a palavra atual
-            const editor = document.getElementById('editor');
-            const wordRange = this.getWordRange(range);
-            if (wordRange) {
-                const word = wordRange.toString();
-                if (word) {
-                    this.ignoredWords.add(word.toLowerCase());
-                    this.showNotification(`Palavra "${word}" ignorada`, 'info');
-                    
-                    // Adicionar classe para esconder underline vermelho
-                    const span = document.createElement('span');
-                    span.className = 'ignored-word';
-                    span.textContent = word;
-                    wordRange.deleteContents();
-                    wordRange.insertNode(span);
-                    
-                    this.saveData();
-                }
-            }
-        } else {
-            // Ignorar texto selecionado
-            this.ignoredWords.add(selectedText.toLowerCase());
-            this.showNotification(`Palavra "${selectedText}" ignorada`, 'info');
-            
-            // Adicionar classe para esconder underline vermelho
-            const span = document.createElement('span');
-            span.className = 'ignored-word';
-            span.textContent = selectedText;
-            range.deleteContents();
-            range.insertNode(span);
-            
-            this.saveData();
-        }
-    }
-
-    getWordRange(range) {
-        if (!range.collapsed) return range;
-        
-        const editor = document.getElementById('editor');
-        const text = editor.textContent;
-        const startOffset = range.startOffset;
-        const container = range.startContainer;
-        
-        if (container.nodeType !== Node.TEXT_NODE) return null;
-        
-        let start = startOffset;
-        let end = startOffset;
-        
-        // Encontrar início da palavra
-        while (start > 0 && !/\s/.test(text[start - 1])) {
-            start--;
-        }
-        
-        // Encontrar fim da palavra
-        while (end < text.length && !/\s/.test(text[end])) {
-            end++;
-        }
-        
-        if (start < end) {
-            const wordRange = document.createRange();
-            wordRange.setStart(container, start);
-            wordRange.setEnd(container, end);
-            return wordRange;
-        }
-        
-        return null;
-    }
-
-    // ========== PERSONALIZAÇÃO DE FOLHA ==========
-
-    showCustomizeSheetModal() {
-        if (!this.currentSheet) {
-            this.showNotification('Selecione uma folha primeiro', 'error');
-            return;
-        }
-        
-        const modal = document.getElementById('customizeSheetModal');
-        modal.classList.add('active');
-        
-        // Carregar configurações atuais
-        const customization = this.currentSheet.customization || {
-            backgroundImage: null,
-            backgroundOpacity: 0.1,
-            backgroundBlur: 0
+        // ===== CADERNOS =====
+        document.getElementById('newNotebook').onclick = () => {
+            document.getElementById('notebookModal').classList.add('active');
+            document.getElementById('notebookName').focus();
         };
-        
-        // Atualizar opções
-        const bgOptions = document.querySelectorAll('.bg-option');
-        bgOptions.forEach(option => {
-            option.classList.remove('active');
-            if (customization.backgroundImage) {
-                if (option.dataset.bg === 'custom') {
-                    option.classList.add('active');
-                }
-            } else if (option.dataset.bg === 'none') {
-                option.classList.add('active');
-            }
-        });
-        
-        // Atualizar sliders
-        document.getElementById('bgOpacity').value = customization.backgroundOpacity || 0.1;
-        document.getElementById('bgBlur').value = customization.backgroundBlur || 0;
-        
-        this.updateSliderValues();
-        this.updatePreview();
-    }
 
-    updateSliderValues() {
-        const opacityValue = document.getElementById('bgOpacity').value;
-        const blurValue = document.getElementById('bgBlur').value;
-        
-        document.getElementById('opacityValue').textContent = `${Math.round(opacityValue * 100)}%`;
-        document.getElementById('blurValue').textContent = `${blurValue}px`;
-        
-        // Atualizar preview
-        this.updatePreview();
-    }
-
-    updatePreview() {
-        const previewArea = document.getElementById('bgPreviewArea');
-        const opacity = document.getElementById('bgOpacity').value;
-        const blur = document.getElementById('bgBlur').value;
-        const activeBg = document.querySelector('.bg-option.active').dataset.bg;
-        
-        previewArea.style.backgroundImage = 'none';
-        previewArea.style.backgroundColor = 'white';
-        
-        if (activeBg === 'custom' && this.currentCustomization.backgroundImage) {
-            previewArea.style.backgroundImage = `url("${this.currentCustomization.backgroundImage}")`;
-            previewArea.style.backgroundSize = 'cover';
-            previewArea.style.backgroundPosition = 'center';
-        }
-        
-        previewArea.style.opacity = opacity;
-        
-        if (blur > 0) {
-            previewArea.style.filter = `blur(${blur}px)`;
-        } else {
-            previewArea.style.filter = 'none';
-        }
-    }
-
-    handleBackgroundUpload(file) {
-        if (!file || !file.type.startsWith('image/')) {
-            this.showNotification('Selecione um arquivo de imagem válido', 'error');
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            this.currentCustomization.backgroundImage = e.target.result;
-            this.updatePreview();
-        };
-        reader.readAsDataURL(file);
-    }
-
-    applySheetCustomization(customization) {
-        if (!customization) return;
-        
-        const editor = document.getElementById('editor');
-        
-        if (customization.backgroundImage) {
-            editor.style.backgroundImage = `url("${customization.backgroundImage}")`;
-            editor.style.backgroundSize = customization.backgroundSize || 'cover';
-            editor.style.backgroundPosition = customization.backgroundPosition || 'center';
-            editor.style.backgroundRepeat = 'no-repeat';
-        } else {
-            editor.style.backgroundImage = 'none';
-            editor.style.backgroundColor = 'white';
-        }
-        
-        editor.style.opacity = customization.backgroundOpacity || 1;
-        
-        if (customization.backgroundBlur > 0) {
-            editor.style.filter = `blur(${customization.backgroundBlur}px)`;
-        } else {
-            editor.style.filter = 'none';
-        }
-    }
-
-    saveCustomization() {
-        if (!this.currentSheet) return;
-        
-        const customization = {
-            backgroundImage: this.currentCustomization.backgroundImage,
-            backgroundOpacity: parseFloat(document.getElementById('bgOpacity').value),
-            backgroundBlur: parseInt(document.getElementById('bgBlur').value),
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-        };
-        
-        this.currentSheet.customization = customization;
-        this.applySheetCustomization(customization);
-        
-        this.saveData();
-        this.showNotification('Folha personalizada!', 'success');
-        document.getElementById('customizeSheetModal').classList.remove('active');
-    }
-
-    // ========== CONFIGURAÇÕES DE FONTE ==========
-
-    showFontSettingsModal() {
-        if (!this.currentSheet) {
-            this.showNotification('Selecione uma folha primeiro', 'error');
-            return;
-        }
-        
-        const modal = document.getElementById('fontSettingsModal');
-        modal.classList.add('active');
-        
-        // Carregar configurações atuais
-        const settings = this.currentSheet.fontSettings || this.fontSettings;
-        
-        document.getElementById('fontFamily').value = settings.fontFamily;
-        document.getElementById('fontSize').value = settings.fontSize;
-        document.getElementById('lineHeight').value = settings.lineHeight;
-        document.getElementById('letterSpacing').value = settings.letterSpacing;
-        
-        this.updateFontPreview();
-    }
-
-    updateFontPreview() {
-        const previewArea = document.getElementById('fontPreviewArea');
-        const fontFamily = document.getElementById('fontFamily').value;
-        const fontSize = document.getElementById('fontSize').value;
-        const lineHeight = document.getElementById('lineHeight').value;
-        const letterSpacing = document.getElementById('letterSpacing').value;
-        
-        previewArea.style.fontFamily = fontFamily;
-        previewArea.style.fontSize = `${fontSize}px`;
-        previewArea.style.lineHeight = lineHeight;
-        previewArea.style.letterSpacing = `${letterSpacing}px`;
-        
-        // Atualizar valores exibidos
-        document.getElementById('fontSizeValue').textContent = `${fontSize}px`;
-        document.getElementById('lineHeightValue').textContent = lineHeight;
-        document.getElementById('letterSpacingValue').textContent = `${letterSpacing}px`;
-    }
-
-    applyFontSettings(settings = null) {
-        const editor = document.getElementById('editor');
-        
-        if (settings) {
-            this.fontSettings = { ...settings };
-        } else {
-            this.fontSettings = {
-                fontFamily: document.getElementById('fontFamily').value,
-                fontSize: parseInt(document.getElementById('fontSize').value),
-                lineHeight: parseFloat(document.getElementById('lineHeight').value),
-                letterSpacing: parseFloat(document.getElementById('letterSpacing').value)
-            };
-        }
-        
-        editor.style.fontFamily = this.fontSettings.fontFamily;
-        editor.style.fontSize = `${this.fontSettings.fontSize}px`;
-        editor.style.lineHeight = this.fontSettings.lineHeight;
-        editor.style.letterSpacing = `${this.fontSettings.letterSpacing}px`;
-        
-        // Salvar nas configurações da folha atual
-        if (this.currentSheet) {
-            this.currentSheet.fontSettings = { ...this.fontSettings };
-            this.saveData();
-        }
-        
-        if (!settings) {
-            this.showNotification('Configurações de fonte aplicadas!', 'success');
-            document.getElementById('fontSettingsModal').classList.remove('active');
-        }
-    }
-
-    // ========== IMAGENS ==========
-    showImageModal() {
-        document.getElementById('imageModal').classList.add('active');
-        document.getElementById('insertImageBtn').disabled = true;
-        document.getElementById('imagePreview').style.display = 'none';
-        document.getElementById('urlPreview').style.display = 'none';
-        document.getElementById('imageAlt').value = '';
-        document.getElementById('imageSize').value = 'auto';
-        document.getElementById('imageUrl').value = '';
-        
-        // Resetar file input
-        document.getElementById('imageFile').value = '';
-    }
-
-    handleImageUpload(file) {
-        if (!file || !file.type.startsWith('image/')) {
-            this.showNotification('Selecione um arquivo de imagem válido', 'error');
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const preview = document.getElementById('previewImage');
-            preview.src = e.target.result;
-            document.getElementById('imagePreview').style.display = 'block';
-            document.getElementById('insertImageBtn').disabled = false;
-            
-            // Gerar nome automático para alt text
-            const fileName = file.name.replace(/\.[^/.]+$/, "");
-            document.getElementById('imageAlt').value = fileName;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    handleUrlPreview() {
-        const url = document.getElementById('imageUrl').value.trim();
-        if (!url) return;
-        
-        // Validar URL
-        try {
-            new URL(url);
-        } catch {
-            this.showNotification('URL inválida', 'error');
-            return;
-        }
-        
-        const preview = document.getElementById('urlPreviewImage');
-        preview.src = url;
-        document.onerror = () => {
-            this.showNotification('Não foi possível carregar a imagem da URL', 'error');
-            document.getElementById('urlPreview').style.display = 'none';
-            document.getElementById('insertImageBtn').disabled = true;
-        };
-        
-        preview.onload = () => {
-            document.getElementById('urlPreview').style.display = 'block';
-            document.getElementById('insertImageBtn').disabled = false;
-        };
-        
-        preview.onerror = () => {
-            this.showNotification('Não foi possível carregar a imagem da URL', 'error');
-            document.getElementById('urlPreview').style.display = 'none';
-            document.getElementById('insertImageBtn').disabled = true;
-        };
-    }
-
-    insertImage() {
-        let imageSrc = '';
-        let imageAlt = document.getElementById('imageAlt').value.trim();
-        const imageSize = document.getElementById('imageSize').value;
-        
-        const activeTab = document.querySelector('.option-tab.active').dataset.option;
-        
-        if (activeTab === 'upload') {
-            const preview = document.getElementById('previewImage');
-            if (!preview.src) {
-                this.showNotification('Selecione uma imagem primeiro', 'error');
-                return;
-            }
-            imageSrc = preview.src;
-        } else {
-            const url = document.getElementById('imageUrl').value.trim();
-            if (!url) {
-                this.showNotification('Digite uma URL válida', 'error');
-                return;
-            }
-            imageSrc = url;
-        }
-        
-        if (!imageAlt) {
-            imageAlt = 'Imagem';
-        }
-        
-        // Inserir imagem no editor
-        const img = document.createElement('img');
-        img.src = imageSrc;
-        img.alt = imageAlt;
-        
-        // Aplicar classe de tamanho
-        if (imageSize !== 'auto') {
-            img.classList.add(imageSize);
-        }
-        
-        // Inserir no cursor ou no final
-        const editor = document.getElementById('editor');
-        const selection = window.getSelection();
-        
-        if (selection.rangeCount && !selection.isCollapsed) {
-            // Substituir texto selecionado
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(img);
-        } else {
-            // Inserir no cursor
-            if (selection.rangeCount) {
-                const range = selection.getRangeAt(0);
-                range.insertNode(img);
+        document.getElementById('createNotebookBtn').onclick = () => {
+            const name = document.getElementById('notebookName').value.trim();
+            if (name) {
+                const color = document.querySelector('.color-option.active').dataset.color;
+                this.createNotebook(name, color);
+                document.getElementById('notebookModal').classList.remove('active');
+                document.getElementById('notebookName').value = '';
             } else {
-                // Inserir no final
-                editor.appendChild(img);
+                this.showNotification('Nome necessário', 'Digite um nome para o caderno.', 'error');
             }
-        }
-        
-        // Adicionar parágrafo após a imagem se for o último elemento
-        if (editor.lastChild === img) {
-            editor.appendChild(document.createElement('p'));
-        }
-        
-        // Focar no editor e colocar cursor após a imagem
-        editor.focus();
-        const range = document.createRange();
-        range.setStartAfter(img);
-        range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        
-        // Fechar modal
-        document.getElementById('imageModal').classList.remove('active');
-        
-        // Atualizar contadores
-        this.updateImageCount();
-        this.unsavedChanges = true;
-        this.checkUnsavedChanges();
-        
-        this.showNotification('Imagem inserida com sucesso!');
-    }
+        };
 
-    // ========== MÚSICA ==========
+        document.getElementById('cancelNotebookBtn').onclick = () => {
+            document.getElementById('notebookModal').classList.remove('active');
+        };
 
-    async loadDefaultMusic() {
-        try {
-            const config = JSON.parse(document.getElementById('default-music-config').textContent);
-            this.defaultTracks = config.tracks;
-            this.tracks.default = config.tracks;
-            
-            // Renderizar músicas padrão
-            this.renderDefaultTracks();
-            
-        } catch (error) {
-            console.error('Erro ao carregar músicas padrão:', error);
-            this.defaultTracks = [];
-            this.tracks.default = [];
-        }
-    }
-
-    loadMusicSettings() {
-        const saved = localStorage.getItem('escry-music');
-        if (saved) {
-            try {
-                const data = JSON.parse(saved);
-                this.tracks.uploaded = data.tracks || [];
-                this.currentPlaylist = data.currentPlaylist || 'default';
-                this.audio.volume = data.volume || 0.5;
-                document.getElementById('volumeSlider').value = this.audio.volume;
-            } catch (e) {
-                this.tracks.uploaded = [];
-                this.currentPlaylist = 'default';
-                this.audio.volume = 0.5;
+        document.getElementById('notebookName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('createNotebookBtn').click();
             }
-        }
-        
-        this.renderUploadedTracks();
-    }
+        });
 
-    setupAudioEvents() {
-        this.audio.addEventListener('timeupdate', () => this.updateProgress());
-        this.audio.addEventListener('loadedmetadata', () => {
-            document.getElementById('duration').textContent = this.formatTime(this.audio.duration);
+        // Opções de cor
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.onclick = () => {
+                document.querySelectorAll('.color-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                option.classList.add('active');
+            };
         });
-        this.audio.addEventListener('ended', () => this.playNextTrack());
-        this.audio.addEventListener('play', () => this.updatePlayState(true));
-        this.audio.addEventListener('pause', () => this.updatePlayState(false));
-        this.audio.addEventListener('error', (e) => {
-            console.error('Erro no áudio:', e);
-            this.showNotification('Erro ao reproduzir música', 'error');
+
+        // ===== FOLHAS =====
+        document.getElementById('newSheet').onclick = () => {
+            if (!this.currentNotebook) {
+                this.showNotification('Selecione um caderno', 'Escolha um caderno primeiro.', 'error');
+                return;
+            }
+            
+            document.getElementById('sheetModal').classList.add('active');
+            document.getElementById('sheetName').focus();
+        };
+
+        document.getElementById('createSheetBtn').onclick = () => {
+            const name = document.getElementById('sheetName').value.trim();
+            if (name) {
+                const template = document.getElementById('sheetTemplate').value;
+                this.addSheet(name, template);
+                document.getElementById('sheetModal').classList.remove('active');
+                document.getElementById('sheetName').value = '';
+            } else {
+                this.showNotification('Título necessário', 'Digite um título para a folha.', 'error');
+            }
+        };
+
+        document.getElementById('cancelSheetBtn').onclick = () => {
+            document.getElementById('sheetModal').classList.remove('active');
+        };
+
+        document.getElementById('sheetName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('createSheetBtn').click();
+            }
         });
+
+        // ===== EDITOR =====
+        document.getElementById('saveBtn').onclick = () => this.saveContent();
+        document.getElementById('exportBtn').onclick = () => this.showExportModal();
+        document.getElementById('deleteSheetBtn').onclick = () => {
+            if (this.currentSheet) {
+                this.deleteSheet(this.currentSheet.id);
+            }
+        };
+
+        // Ferramentas de formatação
+        document.getElementById('boldBtn').onclick = () => this.applyFormatting('bold');
+        document.getElementById('italicBtn').onclick = () => this.applyFormatting('italic');
+        document.getElementById('underlineBtn').onclick = () => this.applyFormatting('underline');
+        document.getElementById('highlightBtn').onclick = () => this.applyFormatting('hiliteColor', '#f1c40f');
+        document.getElementById('listUlBtn').onclick = () => this.applyFormatting('insertUnorderedList');
+        document.getElementById('imageBtn').onclick = () => this.insertImage();
+        document.getElementById('quoteBtn').onclick = () => this.insertQuote();
+        document.getElementById('dividerBtn').onclick = () => this.insertDivider();
+
+        // Cor do texto
+        document.getElementById('textColorPicker').onchange = () => this.changeTextColor();
+
+        // ===== PERSONALIZAÇÃO =====
+        document.getElementById('customizeSheetBtn').onclick = () => this.showCustomizeSheetModal();
+        document.getElementById('fontSettingsBtn').onclick = () => this.showFontSettingsModal();
+
+        // Aplicar personalização
+        document.getElementById('applyCustomizeBtn').onclick = () => this.saveCustomization();
+        document.getElementById('cancelCustomizeBtn').onclick = () => {
+            document.getElementById('customizeSheetModal').classList.remove('active');
+        };
+
+        // Opções de fundo
+        document.querySelectorAll('.bg-option').forEach(option => {
+            option.onclick = () => {
+                document.querySelectorAll('.bg-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                option.classList.add('active');
+                
+                if (option.dataset.bg === 'custom') {
+                    document.getElementById('bgImageUpload').click();
+                }
+            };
+        });
+
+        // Upload de imagem de fundo
+        document.getElementById('bgImageUpload').onchange = (e) => {
+            this.handleBackgroundUpload(e.target.files[0]);
+        };
+
+        // Tons de página
+        document.querySelectorAll('.color-tone').forEach(tone => {
+            tone.onclick = () => {
+                document.querySelectorAll('.color-tone').forEach(t => {
+                    t.classList.remove('active');
+                });
+                tone.classList.add('active');
+            };
+        });
+
+        // Margens
+        document.querySelectorAll('.margin-option').forEach(option => {
+            option.onclick = () => {
+                document.querySelectorAll('.margin-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                option.classList.add('active');
+            };
+        });
+
+        // ===== CONFIGURAÇÕES DE FONTE =====
+        document.getElementById('applyFontBtn').onclick = () => this.applyFontSettings();
+        document.getElementById('cancelFontBtn').onclick = () => {
+            document.getElementById('fontSettingsModal').classList.remove('active');
+        };
+
+        // Opções de fonte
+        document.querySelectorAll('.font-option').forEach(option => {
+            option.onclick = () => {
+                document.querySelectorAll('.font-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                option.classList.add('active');
+                this.updateFontPreview();
+            };
+        });
+
+        // Sliders
+        document.getElementById('fontSize').oninput = () => this.updateFontPreview();
+        document.getElementById('lineHeight').oninput = () => this.updateFontPreview();
+
+        // ===== MÚSICA =====
+        document.getElementById('toggleMusic').onclick = () => this.toggleMusicSidebar();
+        document.getElementById('closeMusic').onclick = () => this.toggleMusicSidebar();
+
+        // Player
+        document.getElementById('playPause').onclick = () => this.playPause();
+        document.getElementById('nextTrack').onclick = () => this.playNextTrack();
+        document.getElementById('prevTrack').onclick = () => this.playPrevTrack();
+
+        // Barras de progresso
+        const progressBar = document.getElementById('progressBar');
+        const volumeBar = document.getElementById('volumeBar');
+        
+        progressBar.onclick = (e) => this.updateProgressBar(e);
+        volumeBar.onclick = (e) => this.updateVolume(e);
+
+        // Bibliotecas
+        document.querySelectorAll('.library-tab').forEach(tab => {
+            tab.onclick = () => {
+                this.switchLibrary(tab.dataset.library);
+            };
+        });
+
+        // Trilhas
+        document.addEventListener('click', (e) => {
+            const trackItem = e.target.closest('.track-item-library');
+            if (trackItem && !e.target.closest('.delete-track')) {
+                const trackId = trackItem.dataset.id;
+                const track = [...this.tracks.focus, ...this.tracks.creative, ...this.tracks.ambient, ...this.tracks.uploaded]
+                    .find(t => t.id === trackId);
+                if (track) {
+                    this.playTrack(track);
+                }
+            }
+        });
+
+        // Upload de música
+        const uploadArea = document.getElementById('uploadArea');
+        const audioUpload = document.getElementById('audioUpload');
+        
+        uploadArea.onclick = () => audioUpload.click();
+        uploadArea.ondragover = (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'var(--accent-color)';
+            uploadArea.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+        };
+        uploadArea.ondragleave = () => {
+            uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
+            uploadArea.style.backgroundColor = 'rgba(255,255,255,0.05)';
+        };
+        uploadArea.ondrop = (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
+            uploadArea.style.backgroundColor = 'rgba(255,255,255,0.05)';
+            this.handleMusicUpload(e.dataTransfer.files);
+        };
+        
+        audioUpload.onchange = (e) => {
+            this.handleMusicUpload(e.target.files);
+            e.target.value = '';
+        };
+
+        // ===== CAPA =====
+        document.getElementById('changeCoverBtn').onclick = () => {
+            document.getElementById('coverModal').classList.add('active');
+        };
+
+        document.getElementById('applyCoverBtn').onclick = () => {
+            const coverType = document.querySelector('.cover-preset.active').dataset.cover;
+            
+            if (coverType === 'custom' && this.currentNotebook?.customCover) {
+                this.updateCover('custom', this.currentNotebook.customCover);
+                this.showNotification('Capa aplicada', 'Sua capa personalizada foi aplicada.', 'success');
+            } else {
+                this.updateCover(coverType, null);
+                this.showNotification('Capa aplicada', 'A capa foi alterada.', 'success');
+            }
+            
+            document.getElementById('coverModal').classList.remove('active');
+        };
+
+        document.getElementById('cancelCoverBtn').onclick = () => {
+            document.getElementById('coverModal').classList.remove('active');
+        };
+
+        // Opções de capa
+        document.querySelectorAll('.cover-preset').forEach(preset => {
+            preset.onclick = () => {
+                document.querySelectorAll('.cover-preset').forEach(p => {
+                    p.classList.remove('active');
+                });
+                preset.classList.add('active');
+                
+                if (preset.dataset.cover === 'custom') {
+                    document.getElementById('customCoverUpload').style.display = 'block';
+                    document.getElementById('coverFile').click();
+                } else {
+                    document.getElementById('customCoverUpload').style.display = 'none';
+                }
+            };
+        });
+
+        // Upload de capa personalizada
+        document.getElementById('coverFile').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file || !file.type.startsWith('image/')) {
+                this.showNotification('Formato inválido', 'Selecione apenas imagens.', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (this.currentNotebook) {
+                    this.currentNotebook.customCover = e.target.result;
+                    this.updateCover('custom', e.target.result);
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // ===== EXPORTAÇÃO =====
+        document.getElementById('cancelExportBtn').onclick = () => {
+            document.getElementById('exportModal').classList.remove('active');
+        };
+
+        document.getElementById('confirmExportBtn').onclick = () => {
+            const format = document.querySelector('.export-option.active').dataset.format;
+            this.exportSheet(format);
+        };
+
+        document.querySelectorAll('.export-option').forEach(option => {
+            option.onclick = () => {
+                document.querySelectorAll('.export-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                option.classList.add('active');
+            };
+        });
+
+        // ===== MOBILE =====
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('mainSidebar');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        
+        mobileMenuBtn.onclick = () => {
+            sidebar.classList.toggle('active');
+            mobileOverlay.classList.toggle('active');
+        };
+
+        mobileOverlay.onclick = () => {
+            sidebar.classList.remove('active');
+            mobileOverlay.classList.remove('active');
+        };
+
+        // Swipe para fechar sidebar
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!sidebar.classList.contains('active')) return;
+            
+            const touchX = e.touches[0].clientX;
+            const diffX = touchX - touchStartX;
+            
+            if (diffX > 50) {
+                sidebar.classList.remove('active');
+                mobileOverlay.classList.remove('active');
+            }
+        }, { passive: true });
+
+        // ===== TECLAS DE ATALHO =====
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+S para salvar
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                this.saveContent();
+            }
+            
+            // Ctrl+B para negrito
+            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                e.preventDefault();
+                this.applyFormatting('bold');
+            }
+            
+            // Ctrl+I para itálico
+            if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+                e.preventDefault();
+                this.applyFormatting('italic');
+            }
+            
+            // Ctrl+U para sublinhado
+            if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+                e.preventDefault();
+                this.applyFormatting('underline');
+            }
+            
+            // Ctrl+Shift+I para imagem
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
+                e.preventDefault();
+                this.insertImage();
+            }
+            
+            // Ctrl+Q para citação
+            if ((e.ctrlKey || e.metaKey) && e.key === 'q') {
+                e.preventDefault();
+                this.insertQuote();
+            }
+            
+            // Ctrl+D para divisor
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                e.preventDefault();
+                this.insertDivider();
+            }
+            
+            // Ctrl+Space para play/pause música
+            if (e.ctrlKey && e.key === ' ') {
+                e.preventDefault();
+                this.playPause();
+            }
+            
+            // ESC para fechar modais/sidebars
+            if (e.key === 'Escape') {
+                this.closeAllModals();
+                
+                if (window.innerWidth <= 992) {
+                    sidebar.classList.remove('active');
+                    mobileOverlay.classList.remove('active');
+                }
+                
+                if (this.isMusicVisible) {
+                    this.toggleMusicSidebar();
+                }
+            }
+        });
+
+        // Fechar modais clicando fora
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            };
+        });
+
+        // ===== INSTALAÇÃO PWA =====
+        document.getElementById('installBtn').onclick = () => {
+            if (this.deferredPrompt) {
+                this.installApp();
+            } else {
+                this.showInstallInstructions();
+            }
+        };
     }
 
     toggleMusicSidebar() {
@@ -1518,361 +2231,54 @@ class NotesApp {
         
         if (this.isMusicVisible) {
             musicSidebar.classList.add('active');
-            document.getElementById('toggleMusic').innerHTML = '<i class="fas fa-times"></i> Fechar Música';
+            document.getElementById('toggleMusic').innerHTML = '<i class="fas fa-times"></i> Fechar';
         } else {
             musicSidebar.classList.remove('active');
-            document.getElementById('toggleMusic').innerHTML = '<i class="fas fa-music"></i> Música';
+            document.getElementById('toggleMusic').innerHTML = '<i class="fas fa-headphones"></i> Atmosfera';
         }
     }
 
-    renderDefaultTracks() {
-        const container = document.getElementById('defaultTracksList');
-        container.innerHTML = '';
-        
-        if (this.tracks.default.length === 0) {
-            container.innerHTML = `
-                <div class="no-tracks">
-                    <i class="fas fa-music"></i>
-                    <p>Nenhuma música padrão configurada</p>
-                    <p class="upload-hint">Adicione músicas na área de upload</p>
-                </div>
-            `;
-            return;
-        }
-        
-        this.tracks.default.forEach((track, index) => {
-            const div = document.createElement('div');
-            div.className = `track-item ${this.currentTrack?.id === track.id ? 'playing' : ''}`;
-            div.setAttribute('data-id', track.id);
-            div.innerHTML = `
-                <div class="track-number">${index + 1}</div>
-                <div class="track-details">
-                    <div class="title">${track.title}</div>
-                    <div class="artist">${track.artist}</div>
-                </div>
-                <div class="track-duration">${track.duration}</div>
-                <i class="fas fa-play"></i>
-            `;
-            
-            div.onclick = () => this.playTrack(track);
-            container.appendChild(div);
+    closeAllModals() {
+        document.querySelectorAll('.modal.active').forEach(modal => {
+            modal.classList.remove('active');
         });
     }
 
-    renderUploadedTracks() {
-        const container = document.getElementById('uploadedTracksList');
-        container.innerHTML = '';
+    updateCover(coverType, customCover = null) {
+        if (!this.currentNotebook) return;
         
-        if (this.tracks.uploaded.length === 0) {
-            container.innerHTML = `
-                <div class="no-tracks">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <p>Nenhuma música carregada</p>
-                    <p class="upload-hint">Arraste ou clique para adicionar músicas</p>
-                </div>
-            `;
-            return;
-        }
+        this.currentNotebook.cover = coverType;
+        this.currentNotebook.customCover = customCover;
         
-        this.tracks.uploaded.forEach((track, index) => {
-            const div = document.createElement('div');
-            div.className = `track-item ${this.currentTrack?.id === track.id ? 'playing' : ''}`;
-            div.setAttribute('data-id', track.id);
-            div.innerHTML = `
-                <div class="track-number">${index + 1}</div>
-                <div class="track-details">
-                    <div class="title">${track.title}</div>
-                    <div class="artist">${track.artist}</div>
-                </div>
-                <div class="track-duration">${track.duration}</div>
-                <button class="delete-track" data-id="${track.id}" title="Remover">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-            
-            div.onclick = (e) => {
-                if (!e.target.closest('.delete-track')) {
-                    this.playTrack(track);
-                }
-            };
-            
-            const deleteBtn = div.querySelector('.delete-track');
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                this.deleteUploadedTrack(track.id);
-            };
-            
-            container.appendChild(div);
-        });
-    }
-
-    playTrack(track) {
-        this.currentTrack = track;
+        const coverImg = document.getElementById('currentCover');
         
-        // Tentar carregar a música
-        this.audio.src = track.url;
-        
-        this.audio.play().then(() => {
-            // Atualizar UI
-            document.getElementById('currentTrackTitle').textContent = track.title;
-            document.getElementById('currentTrackArtist').textContent = track.artist;
-            document.getElementById('playPause').innerHTML = '<i class="fas fa-pause"></i>';
-            document.getElementById('playPause').title = 'Pausar';
-            this.isPlaying = true;
-            
-            // Atualizar estado da faixa
-            this.updateTrackStates();
-            
-            // Atualizar status na barra inferior
-            document.getElementById('musicStatusText').textContent = 'Tocando';
-            document.querySelector('#musicStatus i').style.color = '#9b59b6';
-            
-        }).catch(e => {
-            console.error('Erro ao reproduzir:', e);
-            
-            // Fallback para músicas padrão
-            if (track.type === 'default') {
-                this.showNotification('Música padrão não disponível offline', 'warning');
-            } else {
-                this.showNotification('Erro ao reproduzir música', 'error');
-            }
-        });
-    }
-
-    updatePlayState(playing) {
-        this.isPlaying = playing;
-        const playBtn = document.getElementById('playPause');
-        
-        if (playing) {
-            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-            playBtn.title = 'Pausar';
-            document.getElementById('musicStatusText').textContent = 'Tocando';
-            document.querySelector('#musicStatus i').style.color = '#9b59b6';
+        if (coverType === 'custom' && customCover) {
+            coverImg.src = customCover;
+        } else if (coverType === 'leather') {
+            coverImg.src = ''; // Usar cor sólida
+            coverImg.style.background = '#8B4513';
+        } else if (coverType === 'fabric') {
+            coverImg.src = '';
+            coverImg.style.background = '#2c3e50';
+            coverImg.style.backgroundImage = 
+                'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)';
         } else {
-            playBtn.innerHTML = '<i class="fas fa-play"></i>';
-            playBtn.title = 'Reproduzir';
-            document.getElementById('musicStatusText').textContent = 'Pausado';
-            document.querySelector('#musicStatus i').style.color = '';
-        }
-    }
-
-    playPause() {
-        if (!this.currentTrack) {
-            // Se não há música selecionada, tocar a primeira da playlist atual
-            const tracks = this.tracks[this.currentPlaylist];
-            if (tracks && tracks.length > 0) {
-                this.playTrack(tracks[0]);
-            } else {
-                this.showNotification('Nenhuma música disponível', 'warning');
-            }
-            return;
+            coverImg.src = 'assets/capas/default.jpg';
+            coverImg.style.background = 'none';
+            coverImg.style.backgroundImage = 'none';
         }
         
-        if (this.isPlaying) {
-            this.audio.pause();
-        } else {
-            this.audio.play().catch(e => {
-                console.error('Erro ao retomar:', e);
-            });
-        }
+        this.saveData();
     }
-
-    playNextTrack() {
-        const tracks = this.tracks[this.currentPlaylist];
-        if (!tracks || tracks.length === 0) return;
-        
-        const currentIndex = tracks.findIndex(t => t.id === this.currentTrack?.id);
-        const nextIndex = (currentIndex + 1) % tracks.length;
-        
-        if (tracks[nextIndex]) {
-            this.playTrack(tracks[nextIndex]);
-        }
-    }
-
-    playPrevTrack() {
-        const tracks = this.tracks[this.currentPlaylist];
-        if (!tracks || tracks.length === 0) return;
-        
-        const currentIndex = tracks.findIndex(t => t.id === this.currentTrack?.id);
-        const prevIndex = currentIndex <= 0 ? tracks.length - 1 : currentIndex - 1;
-        
-        if (tracks[prevIndex]) {
-            this.playTrack(tracks[prevIndex]);
-        }
-    }
-
-    updateProgress() {
-        if (!this.audio.duration || isNaN(this.audio.duration)) return;
-        
-        const progress = (this.audio.currentTime / this.audio.duration) * 100;
-        document.getElementById('progressSlider').value = progress;
-        document.getElementById('currentTime').textContent = this.formatTime(this.audio.currentTime);
-    }
-
-    formatTime(seconds) {
-        if (isNaN(seconds)) return '0:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    updateTrackStates() {
-        document.querySelectorAll('.track-item').forEach(item => {
-            item.classList.remove('playing');
-        });
-        
-        if (this.currentTrack) {
-            const currentItem = document.querySelector(`.track-item[data-id="${this.currentTrack.id}"]`);
-            if (currentItem) {
-                currentItem.classList.add('playing');
-            }
-        }
-    }
-
-    updateVolume() {
-        const volume = parseFloat(document.getElementById('volumeSlider').value);
-        this.audio.volume = volume;
-        this.saveMusicSettings();
-    }
-
-    updateProgressSlider() {
-        const slider = document.getElementById('progressSlider');
-        const progress = parseFloat(slider.value);
-        if (this.audio.duration && !isNaN(this.audio.duration)) {
-            this.audio.currentTime = (progress / 100) * this.audio.duration;
-        }
-    }
-
-    handleUploadedFiles(files) {
-        Array.from(files).forEach(file => {
-            if (!file.type.startsWith('audio/')) {
-                this.showNotification('Apenas arquivos de áudio são permitidos', 'error');
-                return;
-            }
-            
-            if (file.size > 50 * 1024 * 1024) { // 50MB
-                this.showNotification('Arquivo muito grande (máximo 50MB)', 'error');
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const track = {
-                    id: 'uploaded-' + Date.now() + Math.random().toString(36).substr(2, 9),
-                    title: file.name.replace(/\.[^/.]+$/, ""),
-                    artist: 'Arquivo Local',
-                    duration: '--:--',
-                    url: e.target.result,
-                    type: 'local',
-                    fileSize: file.size
-                };
-                
-                this.tracks.uploaded.push(track);
-                this.saveMusicSettings();
-                this.renderUploadedTracks();
-                
-                // Se for a primeira música carregada, atualizar playlist
-                if (this.tracks.uploaded.length === 1) {
-                    this.switchMusicTab('uploaded');
-                }
-                
-                this.showNotification(`"${file.name}" adicionado à biblioteca`);
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
-    deleteUploadedTrack(trackId) {
-        const trackIndex = this.tracks.uploaded.findIndex(track => track.id === trackId);
-        if (trackIndex !== -1) {
-            const track = this.tracks.uploaded[trackIndex];
-            
-            // Se a música que está sendo excluída está tocando atualmente
-            if (this.currentTrack && this.currentTrack.id === trackId) {
-                if (this.tracks.uploaded.length > 1) {
-                    // Tocar a próxima música ou a anterior
-                    const nextIndex = trackIndex < this.tracks.uploaded.length - 1 ? trackIndex + 1 : trackIndex - 1;
-                    if (this.tracks.uploaded[nextIndex]) {
-                        this.playTrack(this.tracks.uploaded[nextIndex]);
-                    } else {
-                        this.audio.pause();
-                        this.currentTrack = null;
-                        this.updatePlayState(false);
-                    }
-                } else {
-                    // Última música sendo removida
-                    this.audio.pause();
-                    this.currentTrack = null;
-                    this.updatePlayState(false);
-                }
-            }
-            
-            this.tracks.uploaded.splice(trackIndex, 1);
-            this.saveMusicSettings();
-            this.renderUploadedTracks();
-            
-            this.showNotification('Música removida da biblioteca');
-        }
-    }
-
-    switchMusicTab(tabName) {
-        // Atualizar botões
-        document.querySelectorAll('.music-tab').forEach(tab => {
-            tab.classList.remove('active');
-            if (tab.dataset.tab === tabName) {
-                tab.classList.add('active');
-            }
-        });
-        
-        // Atualizar conteúdo
-        document.querySelectorAll('.tracks-tab').forEach(tab => {
-            tab.classList.remove('active');
-            if (tab.id === tabName + 'Tracks') {
-                tab.classList.add('active');
-            }
-        });
-        
-        this.currentPlaylist = tabName;
-        this.saveMusicSettings();
-    }
-
-    saveMusicSettings() {
-        const data = {
-            tracks: this.tracks.uploaded,
-            currentPlaylist: this.currentPlaylist,
-            volume: this.audio.volume
-        };
-        localStorage.setItem('escry-music', JSON.stringify(data));
-    }
-
-    // ========== INSTALAÇÃO PWA ==========
 
     async setupServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
                 const registration = await navigator.serviceWorker.register('sw.js');
-                console.log('Service Worker registrado com sucesso:', registration);
-                
-                // Verificar se há uma nova versão
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    console.log('Novo Service Worker encontrado:', newWorker);
-                    
-                    newWorker.addEventListener('statechange', () => {
-                        console.log('Estado do novo Service Worker:', newWorker.state);
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('Nova versão disponível. Por favor, atualize a página.');
-                            this.showNotification('Nova versão disponível! Atualize a página.', 'info');
-                        }
-                    });
-                });
-                
+                console.log('ESCRITY: Service Worker registrado');
             } catch (error) {
-                console.error('Erro ao registrar Service Worker:', error);
-                this.showNotification('Erro ao configurar app offline', 'error');
+                console.error('ESCRITY: Service Worker não registrado:', error);
             }
-        } else {
-            console.log('Service Worker não suportado neste navegador');
         }
     }
 
@@ -1888,779 +2294,75 @@ class NotesApp {
             return;
         }
         
-        // Evento para detectar quando o app pode ser instalado
         window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('beforeinstallprompt disparado');
             e.preventDefault();
             this.deferredPrompt = e;
-            
-            // Mostrar o botão de instalação
             installBtn.style.display = 'flex';
-            installBtn.onclick = () => this.installApp();
         });
         
-        // Evento quando o app é instalado
         window.addEventListener('appinstalled', () => {
-            console.log('App instalado com sucesso!');
             this.deferredPrompt = null;
             installBtn.style.display = 'none';
-            this.showNotification('App instalado com sucesso! Você pode acessá-lo diretamente do seu menu de apps.');
+            this.showNotification('App instalado', 'ESCRITY agora está disponível no seu menu de apps.', 'success');
         });
-        
-        // Se não houver beforeinstallprompt, mostrar instruções manuais
-        setTimeout(() => {
-            if (!this.deferredPrompt && installBtn.style.display !== 'none') {
-                installBtn.onclick = () => this.showInstallInstructions();
-            }
-        }, 3000);
     }
 
     async installApp() {
-        const installBtn = document.getElementById('installBtn');
-        
         if (!this.deferredPrompt) {
             this.showInstallInstructions();
             return;
         }
         
-        // Mostrar prompt de instalação
         this.deferredPrompt.prompt();
-        
-        // Aguardar a resposta do usuário
         const choiceResult = await this.deferredPrompt.userChoice;
         
         if (choiceResult.outcome === 'accepted') {
-            console.log('Usuário aceitou a instalação');
-            installBtn.style.display = 'none';
-            this.showNotification('Instalando... O app estará disponível em breve no seu menu de aplicativos.');
+            console.log('ESCRITY: App instalado');
         } else {
-            console.log('Usuário recusou a instalação');
-            this.showNotification('Instalação cancelada. Você ainda pode usar o app no navegador.', 'warning');
+            this.showNotification('Instalação cancelada', 'Você ainda pode usar o ESCRITY no navegador.', 'info');
         }
         
         this.deferredPrompt = null;
     }
 
     showInstallInstructions() {
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         const isAndroid = /Android/.test(navigator.userAgent);
         
         let instructions = '';
         
         if (isIOS) {
-            instructions = `
-                <strong>Para instalar no iPhone/iPad:</strong>
-                <ol>
-                    <li>Toque no botão "Compartilhar" (ícone de quadrado com flecha para cima)</li>
-                    <li>Role para baixo e toque em "Adicionar à Tela de Início"</li>
-                    <li>Toque em "Adicionar" no canto superior direito</li>
-                </ol>
-                <p><small>Esta funcionalidade está disponível no Safari.</small></p>
-            `;
+            instructions = 'No Safari, toque no ícone de compartilhar e selecione "Adicionar à Tela de Início".';
         } else if (isAndroid) {
-            instructions = `
-                <strong>Para instalar no Android:</strong>
-                <ol>
-                    <li>Toque no menu (três pontos) no navegador</li>
-                    <li>Selecione "Adicionar à tela inicial" ou "Instalar app"</li>
-                    <li>Toque em "Adicionar" ou "Instalar" para confirmar</li>
-                </ol>
-                <p><small>Funciona no Chrome e em navegadores baseados no Chromium.</small></p>
-            `;
+            instructions = 'No Chrome, toque no menu (3 pontos) e selecione "Instalar app".';
         } else {
-            instructions = `
-                <strong>Para instalar no computador:</strong>
-                <ol>
-                    <li>No Chrome/Edge: Clique no ícone de instalação (quadrado com +) na barra de endereço</li>
-                    <li>No Firefox: Clique no ícone de casa no endereço, depois em "Instalar"</li>
-                    <li>No Safari: No menu "Arquivo", selecione "Adicionar à Tela de Início"</li>
-                </ol>
-            `;
+            instructions = 'No Chrome/Edge, clique no ícone de instalação na barra de endereço.';
         }
         
-        document.getElementById('installInstructions').innerHTML = instructions;
-        document.getElementById('installInstructionsModal').classList.add('active');
+        this.showNotification('Instalar App', instructions, 'info');
     }
 
-    // ========== EVENT LISTENERS ==========
-
-    setupEventListeners() {
-        console.log('Configurando eventos...');
-        
-        // ===== APP =====
-        document.getElementById('clearDataBtn').onclick = () => this.clearLocalData();
-        
-        // ===== NOTAS =====
-        document.getElementById('newNotebook').onclick = () => {
-            document.getElementById('notebookModal').classList.add('active');
-            document.getElementById('notebookName').focus();
-        };
-
-        document.getElementById('createNotebookBtn').onclick = () => {
-            const name = document.getElementById('notebookName').value.trim();
-            if (name) {
-                this.createNotebook(name);
-                document.getElementById('notebookModal').classList.remove('active');
-                document.getElementById('notebookName').value = '';
-            } else {
-                this.showNotification('Digite um nome para o caderno', 'error');
-            }
-        };
-
-        document.getElementById('cancelNotebookBtn').onclick = () => {
-            document.getElementById('notebookModal').classList.remove('active');
-        };
-
-        document.getElementById('notebookName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('createNotebookBtn').click();
-            }
-        });
-
-        // Editar caderno
-        document.getElementById('saveEditBtn').onclick = () => this.saveEditedNotebook();
-        document.getElementById('cancelEditBtn').onclick = () => {
-            document.getElementById('editNotebookModal').classList.remove('active');
-            this.editingNotebookId = null;
-        };
-
-        document.getElementById('editNotebookName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.saveEditedNotebook();
-            }
-        });
-
-        // Nova folha
-        document.getElementById('newSheet').onclick = () => {
-            if (!this.currentNotebook) {
-                this.showNotification('Selecione um caderno primeiro', 'error');
-                return;
-            }
-            
-            document.getElementById('sheetModal').classList.add('active');
-            document.getElementById('sheetName').focus();
-        };
-
-        document.getElementById('createSheetBtn').onclick = () => {
-            const name = document.getElementById('sheetName').value.trim();
-            if (name) {
-                this.addSheet(name);
-                document.getElementById('sheetModal').classList.remove('active');
-                document.getElementById('sheetName').value = '';
-            } else {
-                this.showNotification('Digite um título para a folha', 'error');
-            }
-        };
-
-        document.getElementById('cancelSheetBtn').onclick = () => {
-            document.getElementById('sheetModal').classList.remove('active');
-        };
-
-        document.getElementById('sheetName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('createSheetBtn').click();
-            }
-        });
-
-        // Salvar
-        document.getElementById('saveBtn').onclick = () => this.saveContent();
-
-        // Ferramentas de formatação
-        document.getElementById('paragraphBtn').addEventListener('click', () => this.formatParagraph());
-        document.getElementById('boldBtn').addEventListener('click', () => {
-            document.execCommand('bold');
-            this.unsavedChanges = true;
-            this.checkUnsavedChanges();
-        });
-        document.getElementById('italicBtn').addEventListener('click', () => {
-            document.execCommand('italic');
-            this.unsavedChanges = true;
-            this.checkUnsavedChanges();
-        });
-        document.getElementById('underlineBtn').addEventListener('click', () => {
-            document.execCommand('underline');
-            this.unsavedChanges = true;
-            this.checkUnsavedChanges();
-        });
-        document.getElementById('listUlBtn').addEventListener('click', () => {
-            document.execCommand('insertUnorderedList');
-            this.unsavedChanges = true;
-            this.checkUnsavedChanges();
-        });
-        document.getElementById('listOlBtn').addEventListener('click', () => {
-            document.execCommand('insertOrderedList');
-            this.unsavedChanges = true;
-            this.checkUnsavedChanges();
-        });
-        document.getElementById('imageBtn').addEventListener('click', () => this.showImageModal());
-        document.getElementById('ignoreSpellBtn').addEventListener('click', () => this.ignoreCurrentWord());
-
-        // Contador de caracteres e palavras
-        const editor = document.getElementById('editor');
-        editor.addEventListener('input', () => {
-            this.updateCharCount();
-            this.updateWordCount();
-            this.updateImageCount();
-            this.checkUnsavedChanges();
-        });
-
-        // Configurações de fonte
-        document.getElementById('fontSettingsBtn').onclick = () => {
-            this.showFontSettingsModal();
-        };
-
-        // Sliders de fonte
-        document.getElementById('fontFamily').addEventListener('change', () => this.updateFontPreview());
-        document.getElementById('fontSize').addEventListener('input', () => this.updateFontPreview());
-        document.getElementById('lineHeight').addEventListener('input', () => this.updateFontPreview());
-        document.getElementById('letterSpacing').addEventListener('input', () => this.updateFontPreview());
-
-        // Aplicar configurações de fonte
-        document.getElementById('applyFontBtn').onclick = () => {
-            this.applyFontSettings();
-        };
-
-        document.getElementById('cancelFontBtn').onclick = () => {
-            document.getElementById('fontSettingsModal').classList.remove('active');
-        };
-
-        // Capa
-        document.getElementById('changeCoverBtn').onclick = () => {
-            this.showCoverModal();
-        };
-
-        // Capa personalizada
-        document.getElementById('coverFile').addEventListener('change', (e) => {
-            this.handleCoverUpload(e.target.files[0]);
-        });
-
-        document.getElementById('coverUploadArea').addEventListener('click', () => {
-            document.getElementById('coverFile').click();
-        });
-
-        // Personalizar folha
-        document.getElementById('customizeSheetBtn').onclick = () => {
-            this.showCustomizeSheetModal();
-        };
-
-        // Sliders de personalização
-        document.getElementById('bgOpacity').addEventListener('input', () => {
-            this.updateSliderValues();
-        });
-
-        document.getElementById('bgBlur').addEventListener('input', () => {
-            this.updateSliderValues();
-        });
-
-        // Opções de fundo
-        document.querySelectorAll('.bg-option').forEach(option => {
-            option.addEventListener('click', () => {
-                document.querySelectorAll('.bg-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                option.classList.add('active');
-                
-                if (option.dataset.bg === 'custom') {
-                    document.getElementById('bgImageUpload').click();
-                } else {
-                    this.currentCustomization.backgroundImage = null;
-                    this.updatePreview();
-                }
-            });
-        });
-
-        // Upload de imagem de fundo
-        document.getElementById('bgImageUpload').addEventListener('change', (e) => {
-            this.handleBackgroundUpload(e.target.files[0]);
-        });
-
-        // Aplicar personalização
-        document.getElementById('applyCustomizeBtn').onclick = () => {
-            this.saveCustomization();
-        };
-
-        document.getElementById('cancelCustomizeBtn').onclick = () => {
-            document.getElementById('customizeSheetModal').classList.remove('active');
-        };
-
-        // Excluir folha atual
-        document.getElementById('deleteSheetBtn').onclick = () => {
-            if (this.currentSheet) {
-                this.showDeleteConfirm(this.currentSheet);
-            } else {
-                this.showNotification('Nenhuma folha selecionada', 'error');
-            }
-        };
-
-        // ===== BACKUP =====
-        document.getElementById('backupBtn').onclick = () => this.showBackupModal();
-        document.getElementById('restoreBtn').onclick = () => this.showRestoreModal();
-        
-        document.getElementById('cancelBackupBtn').onclick = () => {
-            document.getElementById('backupModal').classList.remove('active');
-        };
-        
-        document.getElementById('createBackupBtn').onclick = () => this.createBackup();
-        
-        document.getElementById('cancelRestoreBtn').onclick = () => {
-            document.getElementById('restoreModal').classList.remove('active');
-            this.pendingRestoreData = null;
-        };
-        
-        document.getElementById('confirmRestoreBtn').onclick = () => this.restoreFromBackup();
-        
-        // Upload de arquivo de restore
-        const restoreDropArea = document.getElementById('restoreDropArea');
-        const restoreFile = document.getElementById('restoreFile');
-        
-        restoreDropArea.addEventListener('click', () => restoreFile.click());
-        
-        restoreDropArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            restoreDropArea.style.borderColor = 'var(--primary-color)';
-            restoreDropArea.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
-        });
-        
-        restoreDropArea.addEventListener('dragleave', () => {
-            restoreDropArea.style.borderColor = 'var(--border-color)';
-            restoreDropArea.style.backgroundColor = '';
-        });
-        
-        restoreDropArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            restoreDropArea.style.borderColor = 'var(--border-color)';
-            restoreDropArea.style.backgroundColor = '';
-            this.handleRestoreFile(e.dataTransfer.files[0]);
-        });
-        
-        restoreFile.addEventListener('change', (e) => {
-            this.handleRestoreFile(e.target.files[0]);
-        });
-
-        // ===== IMAGENS =====
-        document.getElementById('cancelImageBtn').onclick = () => {
-            document.getElementById('imageModal').classList.remove('active');
-        };
-        
-        document.getElementById('insertImageBtn').onclick = () => this.insertImage();
-        
-        // Tabs do modal de imagem
-        document.querySelectorAll('.option-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.option-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.option-content').forEach(c => c.classList.remove('active'));
-                
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.option + 'Option').classList.add('active');
-                
-                // Resetar botão de inserção
-                document.getElementById('insertImageBtn').disabled = true;
-            });
-        });
-        
-        // Upload de imagem
-        const imageUploadArea = document.getElementById('imageUploadArea');
-        const imageFile = document.getElementById('imageFile');
-        
-        imageUploadArea.addEventListener('click', () => imageFile.click());
-        
-        imageUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            imageUploadArea.style.borderColor = 'var(--primary-color)';
-            imageUploadArea.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
-        });
-        
-        imageUploadArea.addEventListener('dragleave', () => {
-            imageUploadArea.style.borderColor = 'var(--border-color)';
-            imageUploadArea.style.backgroundColor = '';
-        });
-        
-        imageUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            imageUploadArea.style.borderColor = 'var(--border-color)';
-            imageUploadArea.style.backgroundColor = '';
-            this.handleImageUpload(e.dataTransfer.files[0]);
-        });
-        
-        imageFile.addEventListener('change', (e) => {
-            this.handleImageUpload(e.target.files[0]);
-        });
-        
-        document.getElementById('removePreview').onclick = () => {
-            document.getElementById('imagePreview').style.display = 'none';
-            document.getElementById('insertImageBtn').disabled = true;
-            document.getElementById('imageFile').value = '';
-        };
-        
-        // Preview de URL
-        document.getElementById('imageUrl').addEventListener('input', () => {
-            this.handleUrlPreview();
-        });
-        
-        document.getElementById('imageAlt').addEventListener('input', () => {
-            const insertBtn = document.getElementById('insertImageBtn');
-            if (!insertBtn.disabled) {
-                // Habilitar apenas se já tiver uma imagem
-                const activeTab = document.querySelector('.option-tab.active').dataset.option;
-                if (activeTab === 'upload') {
-                    insertBtn.disabled = !document.getElementById('previewImage').src;
-                } else {
-                    insertBtn.disabled = !document.getElementById('imageUrl').value.trim();
-                }
-            }
-        });
-
-        // ===== CAPA =====
-        document.getElementById('cancelCoverBtn').onclick = () => {
-            document.getElementById('coverModal').classList.remove('active');
-        };
-        
-        document.getElementById('applyCoverBtn').onclick = () => {
-            this.applyCover();
-        };
-        
-        // Opções de capa
-        document.querySelectorAll('.cover-option').forEach(option => {
-            option.addEventListener('click', () => {
-                document.querySelectorAll('.cover-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                option.classList.add('active');
-                
-                const customUpload = document.getElementById('coverCustomUpload');
-                if (option.dataset.cover === 'custom') {
-                    customUpload.style.display = 'block';
-                } else {
-                    customUpload.style.display = 'none';
-                }
-            });
-        });
-
-        // ===== MÚSICA =====
-        document.getElementById('toggleMusic').onclick = () => this.toggleMusicSidebar();
-        document.getElementById('closeMusic').onclick = () => this.toggleMusicSidebar();
-        
-        // Tabs de música
-        document.querySelectorAll('.music-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                this.switchMusicTab(tab.dataset.tab);
-            });
-        });
-        
-        // Controles do player
-        document.getElementById('playPause').onclick = () => this.playPause();
-        document.getElementById('nextTrack').onclick = () => this.playNextTrack();
-        document.getElementById('prevTrack').onclick = () => this.playPrevTrack();
-        
-        // Sliders
-        document.getElementById('volumeSlider').addEventListener('input', () => this.updateVolume());
-        document.getElementById('progressSlider').addEventListener('input', () => this.updateProgressSlider());
-        
-        // Upload de música
-        const uploadArea = document.getElementById('uploadArea');
-        const audioUpload = document.getElementById('audioUpload');
-        
-        uploadArea.addEventListener('click', () => audioUpload.click());
-        
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'var(--info-color)';
-            uploadArea.style.backgroundColor = 'rgba(155, 89, 182, 0.1)';
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
-            uploadArea.style.backgroundColor = 'rgba(255,255,255,0.05)';
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
-            uploadArea.style.backgroundColor = 'rgba(255,255,255,0.05)';
-            this.handleUploadedFiles(e.dataTransfer.files);
-        });
-        
-        audioUpload.addEventListener('change', (e) => {
-            this.handleUploadedFiles(e.target.files);
-            e.target.value = '';
-        });
-
-        // ===== INSTALAÇÃO =====
-        document.getElementById('closeInstallInstructions').onclick = () => {
-            document.getElementById('installInstructionsModal').classList.remove('active');
-        };
-
-        // ===== MENU MOBILE =====
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mainSidebar = document.getElementById('mainSidebar');
-        const sheetsSidebar = document.getElementById('sheetsSidebar');
-        const mobileOverlay = document.getElementById('mobileOverlay');
-        
-        mobileMenuBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            
-            if (window.innerWidth <= 992) {
-                if (!mainSidebar.classList.contains('active') && !sheetsSidebar.classList.contains('active')) {
-                    mainSidebar.classList.add('active');
-                    mobileOverlay.classList.add('active');
-                } else if (mainSidebar.classList.contains('active')) {
-                    mainSidebar.classList.remove('active');
-                    sheetsSidebar.classList.add('active');
-                } else {
-                    sheetsSidebar.classList.remove('active');
-                    mobileOverlay.classList.remove('active');
-                }
-            }
-        });
-
-        // Fechar sidebars ao clicar fora (mobile)
-        mobileOverlay.addEventListener('click', () => {
-            mainSidebar.classList.remove('active');
-            sheetsSidebar.classList.remove('active');
-            mobileOverlay.classList.remove('active');
-        });
-
-        // Swipe para fechar sidebars
-        let touchStartX = 0;
-        let touchStartY = 0;
-        
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        }, { passive: true });
-        
-        document.addEventListener('touchmove', (e) => {
-            if (!mainSidebar.classList.contains('active') && !sheetsSidebar.classList.contains('active')) {
-                return;
-            }
-            
-            const touchX = e.touches[0].clientX;
-            const touchY = e.touches[0].clientY;
-            const diffX = touchX - touchStartX;
-            const diffY = Math.abs(touchY - touchStartY);
-            
-            // Verificar se é um swipe horizontal (não vertical)
-            if (Math.abs(diffX) > 50 && diffY < 50) {
-                if (diffX > 0 && mainSidebar.classList.contains('active')) {
-                    // Swipe para direita com sidebar aberta - fechar
-                    mainSidebar.classList.remove('active');
-                    mobileOverlay.classList.remove('active');
-                } else if (diffX > 0 && sheetsSidebar.classList.contains('active')) {
-                    // Swipe para direita com sheets sidebar aberta - voltar para main sidebar
-                    sheetsSidebar.classList.remove('active');
-                    mainSidebar.classList.add('active');
-                }
-            }
-        }, { passive: true });
-
-        // ===== GERAL =====
-        // Fechar modais com ESC
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                document.getElementById('notebookModal').classList.remove('active');
-                document.getElementById('editNotebookModal').classList.remove('active');
-                document.getElementById('sheetModal').classList.remove('active');
-                document.getElementById('confirmModal').classList.remove('active');
-                document.getElementById('confirmNotebookModal').classList.remove('active');
-                document.getElementById('backupModal').classList.remove('active');
-                document.getElementById('restoreModal').classList.remove('active');
-                document.getElementById('imageModal').classList.remove('active');
-                document.getElementById('customizeSheetModal').classList.remove('active');
-                document.getElementById('fontSettingsModal').classList.remove('active');
-                document.getElementById('coverModal').classList.remove('active');
-                document.getElementById('installInstructionsModal').classList.remove('active');
-                
-                // Fechar música se visível
-                if (this.isMusicVisible) {
-                    this.toggleMusicSidebar();
-                }
-                
-                // Fechar sidebars mobile
-                if (window.innerWidth <= 992) {
-                    mainSidebar.classList.remove('active');
-                    sheetsSidebar.classList.remove('active');
-                    mobileOverlay.classList.remove('active');
-                }
-            }
-            
-            // Ctrl+S para salvar
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                this.saveContent();
-            }
-            
-            // Ctrl+B para negrito
-            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-                e.preventDefault();
-                document.execCommand('bold');
-                this.unsavedChanges = true;
-                this.checkUnsavedChanges();
-            }
-            
-            // Ctrl+I para itálico
-            if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
-                e.preventDefault();
-                document.execCommand('italic');
-                this.unsavedChanges = true;
-                this.checkUnsavedChanges();
-            }
-            
-            // Ctrl+U para sublinhado
-            if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
-                e.preventDefault();
-                document.execCommand('underline');
-                this.unsavedChanges = true;
-                this.checkUnsavedChanges();
-            }
-            
-            // Ctrl+Shift+I para imagem
-            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
-                e.preventDefault();
-                this.showImageModal();
-            }
-            
-            // Ctrl+Space para play/pause música
-            if (e.ctrlKey && e.key === ' ') {
-                e.preventDefault();
-                this.playPause();
-            }
-            
-            // Ctrl+P para parágrafo
-            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-                e.preventDefault();
-                this.formatParagraph();
-            }
-            
-            // Ctrl+Shift+I para ignorar palavra
-            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
-                e.preventDefault();
-                this.ignoreCurrentWord();
-            }
-        });
-
-        // Fechar modais clicando fora
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.remove('active');
-                    if (modal.id === 'editNotebookModal') {
-                        this.editingNotebookId = null;
-                    }
-                    if (modal.id === 'restoreModal') {
-                        this.pendingRestoreData = null;
-                    }
-                    if (modal.id === 'customizeSheetModal') {
-                        this.currentCustomization = {
-                            backgroundImage: null,
-                            backgroundOpacity: 0.1,
-                            backgroundBlur: 0
-                        };
-                    }
-                }
-            });
-        });
-
-        // Salvar ao sair da página
-        this.setupBeforeUnload();
-
-        // Atualizar status da música quando houver erro
-        this.audio.addEventListener('error', () => {
-            this.showNotification('Erro ao carregar a música. Verifique o arquivo.', 'error');
-            document.getElementById('musicStatusText').textContent = 'Erro';
-            document.querySelector('#musicStatus i').style.color = 'var(--danger-color)';
-        });
-
-        // Suporte a toque para melhor UX mobile
-        document.addEventListener('touchstart', () => {}, {passive: true});
-        
-        // Prevenir zoom com dois dedos
-        document.addEventListener('gesturestart', (e) => {
-            e.preventDefault();
-        });
-
-        // Melhorar scroll em mobile
-        let startY;
-        document.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].clientY;
-        }, {passive: true});
-
-        document.addEventListener('touchmove', (e) => {
-            const element = e.target;
-            const isScrollable = element.scrollHeight > element.clientHeight;
-            
-            if (!isScrollable && element.tagName !== 'INPUT' && element.tagName !== 'TEXTAREA' && element.contentEditable !== 'true') {
-                e.preventDefault();
-            }
-        }, {passive: false});
-        
-        // ===== LOADING SCREEN FALLBACK =====
-        // Garantir que o loading some após um tempo máximo
-        setTimeout(() => {
-            const loadingScreen = document.getElementById('loadingScreen');
-            if (loadingScreen && loadingScreen.style.display === 'flex') {
-                console.log('Timeout do loading screen, forçando entrada no app');
-                loadingScreen.classList.add('fade-out');
-                setTimeout(() => {
-                    loadingScreen.style.display = 'none';
-                    this.enterApp();
-                }, 500);
-            }
-        }, 8000); // 8 segundos de timeout
-        
-        // ===== AJUSTES PARA MOBILE =====
-        // Melhorar foco no editor em mobile
-        editor.addEventListener('touchstart', () => {
-            if (document.activeElement !== editor) {
-                editor.focus();
-            }
-        }, { passive: true });
-        
-        // Prevenir zoom no foco do editor
-        editor.addEventListener('focus', () => {
-            setTimeout(() => {
-                document.body.style.zoom = '100%';
-            }, 100);
-        });
-    }
-    
-    setupBeforeUnload() {
-        window.addEventListener('beforeunload', (e) => {
-            if (this.currentSheet && this.unsavedChanges) {
-                this.saveCurrentContent();
-                this.saveData();
-                
-                // Em alguns navegadores, podemos mostrar um alerta
-                e.preventDefault();
-                e.returnValue = 'Você tem alterações não salvas. Tem certeza que deseja sair?';
-            }
-            
-            // Salvar configurações de música
-            this.saveMusicSettings();
-        });
-    }
-    
     setupIntervals() {
-        // Auto-save a cada 30 segundos
-        setInterval(() => this.autoSave(), 30000);
-        
-        // Verificar modificações não salvas
+        // Verificar modificações não salvas a cada 5 segundos
         setInterval(() => this.checkUnsavedChanges(), 5000);
+        
+        // Criar backup automático a cada hora
+        setInterval(() => this.createAutoBackup(), 60 * 60 * 1000);
     }
 }
 
-// Inicializar o app quando a página carregar
+// Inicializar o app
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM carregado, iniciando app...');
+    console.log('ESCRITY: Carregando espaço de criação...');
     
-    // Pequeno delay para garantir que tudo está carregado
     setTimeout(() => {
-        const app = new NotesApp();
-        window.notesApp = app;
+        const app = new EscrityApp();
+        window.escryApp = app;
         
-        // Verificar se há uma nova versão do service worker
+        // Verificar Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('Controller changed - new service worker activated');
+                console.log('ESCRITY: Nova versão disponível');
                 window.location.reload();
             });
         }

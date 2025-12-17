@@ -1,18 +1,17 @@
 {
-  "name": "ESCRITY - Editor de Notas",
+  "name": "ESCRITY - Guardião de Histórias",
   "short_name": "ESCRITY",
-  "description": "Editor de notas avançado com sincronização por ID, personalização e música ambiente",
+  "description": "Espaço pessoal e seguro para guardar histórias, emoções e ideias. Totalmente offline e privado.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#2c3e50",
-  "theme_color": "#3498db",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
   "orientation": "any",
-  "categories": ["productivity", "utilities", "education"],
+  "categories": ["productivity", "utilities", "education", "books"],
   "lang": "pt-BR",
   "dir": "ltr",
   "prefer_related_applications": false,
   "scope": "./",
-  "id": "./",
   
   "icons": [
     {
@@ -59,59 +58,18 @@
     }
   ],
   
-  "screenshots": [
-    {
-      "src": "screenshots/screenshot1.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "platform": "wide",
-      "label": "Tela principal do ESCRITY"
-    },
-    {
-      "src": "screenshots/screenshot2.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "platform": "narrow",
-      "label": "Visualização mobile"
-    }
-  ],
-  
   "shortcuts": [
     {
       "name": "Nova Folha",
       "short_name": "Nova",
-      "description": "Criar uma nova folha",
-      "url": "./index.html?action=new",
-      "icons": [
-        {
-          "src": "icons/shortcut-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "description": "Criar uma nova página",
+      "url": "./index.html?action=new"
     },
     {
       "name": "Meus Cadernos",
       "short_name": "Cadernos",
       "description": "Ver todos os cadernos",
-      "url": "./index.html?action=notebooks",
-      "icons": [
-        {
-          "src": "icons/notebook-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Música Ambiente",
-      "short_name": "Música",
-      "description": "Abrir player de música",
-      "url": "./index.html?action=music",
-      "icons": [
-        {
-          "src": "icons/music-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "url": "./index.html?action=notebooks"
     }
   ],
   
@@ -121,40 +79,6 @@
     {
       "protocol": "web+escry",
       "url": "./index.html?data=%s"
-    }
-  ],
-  
-  "launch_handler": {
-    "client_mode": "focus-existing"
-  },
-  
-  "handle_links": "preferred",
-  
-  "share_target": {
-    "action": "./index.html?share",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url",
-      "files": [
-        {
-          "name": "files",
-          "accept": ["image/*", "audio/*", "text/*"]
-        }
-      ]
-    }
-  },
-  
-  "file_handlers": [
-    {
-      "action": "./index.html?import",
-      "accept": {
-        "application/json": [".escry"],
-        "text/plain": [".txt", ".md"],
-        "application/pdf": [".pdf"]
-      }
     }
   ]
 }

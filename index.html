@@ -3,64 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ESCRITY - Editor de Notas</title>
+    <title>ESCRITY - Guardião de Histórias</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
-    <meta name="theme-color" content="#2c3e50">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap">
+    <meta name="theme-color" content="#1a1a2e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ESCRITY">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="msapplication-TileColor" content="#2c3e50">
+    <meta name="msapplication-TileColor" content="#1a1a2e">
     <meta name="msapplication-TileImage" content="icons/icon-144x144.png">
     <style>
-        /* Touch highlight fix */
         * {
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
         }
-        input, textarea {
-            -webkit-user-select: auto !important;
-            user-select: auto !important;
+        input, textarea, [contenteditable] {
+            -webkit-user-select: text !important;
+            user-select: text !important;
         }
     </style>
 </head>
 <body>
-    <!-- Loading screen -->
+    <!-- Loading screen atmosférico -->
     <div id="loadingScreen" class="loading-screen">
         <div class="loading-content">
-            <div class="spinner"></div>
+            <div class="spinner">
+                <div class="pen-tip"></div>
+            </div>
             <h2>ESCRITY</h2>
-            <p>Inicializando editor...</p>
+            <p class="loading-subtitle">Inicializando seu espaço de criação...</p>
+            <div class="loading-quote">
+                <i>"Cada palavra é uma semente, cada página um jardim"</i>
+            </div>
         </div>
     </div>
 
     <div id="app-container" class="app-container" style="display: none;">
-        <!-- Sidebar para cadernos -->
+        <!-- Sidebar principal -->
         <aside class="sidebar" id="mainSidebar">
             <div class="sidebar-header">
                 <div class="user-info" id="userInfo">
                     <div class="user-avatar">
-                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-feather-alt"></i>
                     </div>
                     <div class="user-details">
-                        <span class="username" id="currentUsername">Modo Local</span>
+                        <span class="username" id="currentUsername">Escritor Local</span>
                         <span class="user-status" id="syncStatus">
-                            <i class="fas fa-check-circle"></i> Dispositivo Local
+                            <i class="fas fa-lock"></i> Privado & Seguro
                         </span>
                     </div>
                 </div>
-                <button id="clearDataBtn" class="btn-logout" title="Limpar dados">
-                    <i class="fas fa-trash-alt"></i>
+                <button id="clearDataBtn" class="btn-logout" title="Limpar tudo">
+                    <i class="fas fa-broom"></i>
                 </button>
             </div>
             
             <div class="sidebar-content">
                 <div class="section-title">
-                    <h2><i class="fas fa-book"></i> Meus Cadernos</h2>
+                    <h2><i class="fas fa-book-sparkles"></i> Cadernos</h2>
                     <button id="newNotebook" class="btn-icon" title="Novo Caderno">
                         <i class="fas fa-plus"></i>
                     </button>
@@ -70,21 +74,34 @@
                     <!-- Cadernos serão carregados aqui -->
                 </div>
                 
+                <!-- Folhas dentro do caderno selecionado -->
+                <div class="sheets-section" id="sheetsSection" style="display: none;">
+                    <div class="section-title">
+                        <h2><i class="fas fa-layer-group"></i> Folhas</h2>
+                        <button id="newSheet" class="btn-icon" title="Nova Folha">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="sheets-list-compact" id="sheetsList">
+                        <!-- Folhas serão carregadas aqui -->
+                    </div>
+                </div>
+                
                 <div class="sidebar-actions">
                     <button id="backupBtn" class="btn-action">
-                        <i class="fas fa-download"></i> Backup
+                        <i class="fas fa-box-archive"></i> Backup
                     </button>
                     <button id="restoreBtn" class="btn-action">
-                        <i class="fas fa-upload"></i> Restaurar
+                        <i class="fas fa-history"></i> Restaurar
                     </button>
                 </div>
                 
                 <div class="sidebar-footer">
                     <button id="toggleMusic" class="btn-music">
-                        <i class="fas fa-music"></i> Música
+                        <i class="fas fa-headphones"></i> Atmosfera
                     </button>
                     <button id="installBtn" class="btn-install">
-                        <i class="fas fa-mobile-alt"></i> Instalar App
+                        <i class="fas fa-download"></i> Instalar
                     </button>
                 </div>
             </div>
@@ -100,29 +117,6 @@
 
         <!-- Área principal -->
         <main class="main-area">
-            <!-- Sub-sidebar para folhas -->
-            <div class="sheets-sidebar" id="sheetsSidebar">
-                <div class="sheets-header">
-                    <h3><i class="fas fa-layer-group"></i> Folhas</h3>
-                    <button id="newSheet" class="btn-icon">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                </div>
-                <div class="sheets-list" id="sheetsList">
-                    <!-- Folhas serão carregadas aqui -->
-                </div>
-                <div class="sheets-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-file-alt"></i>
-                        <span id="totalSheets">0 folhas</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-font"></i>
-                        <span id="totalChars">0 caracteres</span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Área de edição -->
             <div class="editor-area">
                 <div class="editor-header">
@@ -130,7 +124,7 @@
                         <div class="cover-container">
                             <img id="currentCover" src="assets/capas/default.jpg" alt="Capa">
                             <button id="changeCoverBtn" class="btn-cover" title="Mudar capa">
-                                <i class="fas fa-camera"></i>
+                                <i class="fas fa-palette"></i>
                             </button>
                         </div>
                         <div class="notebook-details">
@@ -139,12 +133,18 @@
                                 <span id="currentSheetTitle">Nenhuma folha selecionada</span>
                                 <span class="sheet-date" id="sheetDate"></span>
                             </div>
-                            <div class="sheet-customization">
-                                <button id="customizeSheetBtn" class="btn-customize" title="Personalizar folha">
-                                    <i class="fas fa-paint-brush"></i> Personalizar
+                            <div class="editor-controls">
+                                <div class="color-picker-container">
+                                    <input type="color" id="textColorPicker" value="#2c3e50" title="Cor do texto">
+                                    <label for="textColorPicker" class="color-picker-label">
+                                        <i class="fas fa-fill-drip"></i>
+                                    </label>
+                                </div>
+                                <button id="customizeSheetBtn" class="btn-customize" title="Personalizar ambiente">
+                                    <i class="fas fa-magic"></i> Ambiente
                                 </button>
-                                <button id="fontSettingsBtn" class="btn-customize" title="Configurações de fonte">
-                                    <i class="fas fa-font"></i> Fonte
+                                <button id="fontSettingsBtn" class="btn-customize" title="Configurar escrita">
+                                    <i class="fas fa-pen-nib"></i> Escrita
                                 </button>
                             </div>
                         </div>
@@ -156,22 +156,31 @@
                                 <button id="boldBtn" title="Negrito"><i class="fas fa-bold"></i></button>
                                 <button id="italicBtn" title="Itálico"><i class="fas fa-italic"></i></button>
                                 <button id="underlineBtn" title="Sublinhado"><i class="fas fa-underline"></i></button>
+                                <button id="highlightBtn" title="Destacar" class="highlight-btn">
+                                    <i class="fas fa-highlighter"></i>
+                                </button>
                             </div>
                             <div class="tool-group">
-                                <button id="listUlBtn" title="Lista não ordenada"><i class="fas fa-list-ul"></i></button>
-                                <button id="listOlBtn" title="Lista ordenada"><i class="fas fa-list-ol"></i></button>
+                                <button id="listUlBtn" title="Lista"><i class="fas fa-list"></i></button>
                                 <button id="imageBtn" title="Inserir imagem"><i class="fas fa-image"></i></button>
-                                <button id="ignoreSpellBtn" class="spellcheck-btn" title="Ignorar palavra">
-                                    <i class="fas fa-eye-slash"></i>
+                                <button id="quoteBtn" title="Citação"><i class="fas fa-quote-right"></i></button>
+                                <button id="dividerBtn" title="Divisor"><i class="fas fa-minus"></i></button>
+                                <button id="saveBtn" class="btn-save">
+                                    <i class="fas fa-save"></i> <span class="save-text">Guardar</span>
                                 </button>
                             </div>
                         </div>
                         <div class="action-tools">
-                            <button id="deleteSheetBtn" class="btn-danger" title="Excluir folha atual">
-                                <i class="fas fa-trash"></i>
+                            <div class="word-counter">
+                                <i class="fas fa-font"></i>
+                                <span id="wordCount">0</span>
+                                <span class="counter-label">palavras</span>
+                            </div>
+                            <button id="exportBtn" class="btn-export" title="Exportar">
+                                <i class="fas fa-file-export"></i>
                             </button>
-                            <button id="saveBtn" class="btn-save">
-                                <i class="fas fa-save"></i> Salvar
+                            <button id="deleteSheetBtn" class="btn-danger" title="Excluir folha">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
@@ -179,94 +188,121 @@
                 
                 <div class="editor-container">
                     <div id="editor" contenteditable="true" class="editor-content" spellcheck="true">
-                        <p>Selecione uma folha para começar a escrever...</p>
+                        <p class="placeholder">Comece a escrever sua história aqui... Deixe as palavras fluírem naturalmente.</p>
                     </div>
                 </div>
                 
                 <div class="status-bar">
                     <div class="status-left">
-                        <span id="charCount">0 caracteres</span>
-                        <span id="wordCount">0 palavras</span>
-                        <span id="imageCount">0 imagens</span>
+                        <span class="stat-item">
+                            <i class="fas fa-clock"></i>
+                            <span id="lastSaved">Nunca salvo</span>
+                        </span>
+                        <span class="stat-item">
+                            <i class="fas fa-ruler-combined"></i>
+                            <span id="charCount">0 caracteres</span>
+                        </span>
                     </div>
                     <div class="status-right">
-                        <span id="lastSaved">--</span>
                         <span id="musicStatus" class="music-status">
                             <i class="fas fa-music"></i>
-                            <span id="musicStatusText">Desligado</span>
+                            <span id="musicStatusText">Silêncio</span>
+                        </span>
+                        <span class="stat-item">
+                            <i class="fas fa-book"></i>
+                            <span id="currentNotebookCount">0 folhas</span>
                         </span>
                     </div>
                 </div>
             </div>
 
-            <!-- Sidebar de música (inicialmente escondida) -->
+            <!-- Sidebar de música/atmosfera -->
             <div class="music-sidebar" id="musicSidebar">
                 <div class="music-header">
-                    <h3><i class="fas fa-headphones"></i> Música Ambiente</h3>
+                    <h3><i class="fas fa-headphones"></i> Atmosfera Sonora</h3>
                     <button id="closeMusic" class="btn-close">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 
-                <div class="player-controls">
+                <div class="player-container">
                     <div class="now-playing" id="nowPlaying">
+                        <div class="album-art">
+                            <i class="fas fa-music"></i>
+                        </div>
                         <div class="track-info">
-                            <div class="track-title" id="currentTrackTitle">Nenhuma música selecionada</div>
-                            <div class="track-artist" id="currentTrackArtist">Selecione uma música</div>
-                        </div>
-                        <div class="player-buttons">
-                            <button id="prevTrack" class="player-btn" title="Anterior">
-                                <i class="fas fa-step-backward"></i>
-                            </button>
-                            <button id="playPause" class="player-btn play-btn" title="Reproduzir">
-                                <i class="fas fa-play"></i>
-                            </button>
-                            <button id="nextTrack" class="player-btn" title="Próxima">
-                                <i class="fas fa-step-forward"></i>
-                            </button>
-                        </div>
-                        <div class="volume-control">
-                            <i class="fas fa-volume-down"></i>
-                            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5">
-                            <i class="fas fa-volume-up"></i>
+                            <div class="track-title" id="currentTrackTitle">Nenhuma trilha</div>
+                            <div class="track-artist" id="currentTrackArtist">Selecione uma atmosfera</div>
                         </div>
                     </div>
                     
-                    <div class="progress-bar">
+                    <div class="player-controls">
+                        <button id="prevTrack" class="player-btn" title="Anterior">
+                            <i class="fas fa-step-backward"></i>
+                        </button>
+                        <button id="playPause" class="player-btn play-btn" title="Reproduzir">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button id="nextTrack" class="player-btn" title="Próxima">
+                            <i class="fas fa-step-forward"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="progress-container">
                         <div class="progress-time">
                             <span id="currentTime">0:00</span>
                             <span id="duration">0:00</span>
                         </div>
-                        <input type="range" id="progressSlider" min="0" max="100" value="0" class="progress-slider">
-                    </div>
-                </div>
-                
-                <div class="music-tabs">
-                    <button class="music-tab active" data-tab="default">
-                        <i class="fas fa-star"></i> Padrão
-                    </button>
-                    <button class="music-tab" data-tab="uploaded">
-                        <i class="fas fa-upload"></i> Minhas Músicas
-                    </button>
-                </div>
-                
-                <div class="tracks-container">
-                    <div class="tracks-tab active" id="defaultTracks">
-                        <h4><i class="fas fa-music"></i> Músicas Padrão</h4>
-                        <div class="tracks-list" id="defaultTracksList">
-                            <!-- Músicas padrão serão carregadas aqui -->
+                        <div class="progress-bar" id="progressBar">
+                            <div class="progress-fill" id="progressFill"></div>
                         </div>
                     </div>
-                    <div class="tracks-tab" id="uploadedTracks">
-                        <h4><i class="fas fa-cloud-upload-alt"></i> Músicas Carregadas</h4>
+                    
+                    <div class="volume-container">
+                        <i class="fas fa-volume-down"></i>
+                        <div class="volume-bar" id="volumeBar">
+                            <div class="volume-fill" id="volumeFill"></div>
+                        </div>
+                        <i class="fas fa-volume-up"></i>
+                    </div>
+                </div>
+                
+                <div class="music-library">
+                    <div class="library-header">
+                        <h4><i class="fas fa-compact-disc"></i> Bibliotecas</h4>
+                        <div class="library-tabs">
+                            <button class="library-tab active" data-library="focus">
+                                <i class="fas fa-brain"></i> Foco
+                            </button>
+                            <button class="library-tab" data-library="creative">
+                                <i class="fas fa-palette"></i> Criatividade
+                            </button>
+                            <button class="library-tab" data-library="ambient">
+                                <i class="fas fa-cloud"></i> Ambiente
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tracks-container">
+                        <div class="tracks-list" id="focusTracks">
+                            <!-- Trilogas de foco -->
+                        </div>
+                        <div class="tracks-list" id="creativeTracks" style="display: none;">
+                            <!-- Trilogas criativas -->
+                        </div>
+                        <div class="tracks-list" id="ambientTracks" style="display: none;">
+                            <!-- Trilhas ambientais -->
+                        </div>
+                    </div>
+                    
+                    <div class="upload-section">
                         <div class="upload-area" id="uploadArea">
                             <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Arraste arquivos de áudio aqui</p>
-                            <p class="upload-hint">ou clique para selecionar</p>
+                            <p>Importar suas trilhas</p>
                             <input type="file" id="audioUpload" accept="audio/*" multiple hidden>
                         </div>
-                        <div class="tracks-list" id="uploadedTracksList">
-                            <!-- Músicas carregadas aparecerão aqui -->
+                        <div class="uploaded-tracks" id="uploadedTracksList">
+                            <!-- Trilhas importadas -->
                         </div>
                     </div>
                 </div>
@@ -277,27 +313,32 @@
     <!-- Modal para novo caderno -->
     <div id="notebookModal" class="modal">
         <div class="modal-content">
-            <h3><i class="fas fa-book"></i> Novo Caderno</h3>
+            <div class="modal-header">
+                <h3><i class="fas fa-book-medical"></i> Novo Caderno</h3>
+                <p class="modal-subtitle">Dê um nome ao seu novo espaço de criação</p>
+            </div>
             <div class="modal-body">
-                <input type="text" id="notebookName" placeholder="Nome do caderno" maxlength="50" autocomplete="off">
+                <div class="input-with-icon">
+                    <i class="fas fa-pen"></i>
+                    <input type="text" id="notebookName" placeholder="Ex: Ideias para romance, Poemas, Diário..." maxlength="60" autocomplete="off">
+                </div>
+                <div class="color-selection">
+                    <p>Cor do caderno:</p>
+                    <div class="color-options">
+                        <div class="color-option" data-color="#1a1a2e" style="background: #1a1a2e;"></div>
+                        <div class="color-option" data-color="#2c3e50" style="background: #2c3e50;"></div>
+                        <div class="color-option" data-color="#34495e" style="background: #34495e;"></div>
+                        <div class="color-option" data-color="#2c3e50" style="background: #2c3e50; border: 2px solid #3498db;"></div>
+                        <div class="color-option" data-color="#16a085" style="background: #16a085;"></div>
+                        <div class="color-option" data-color="#27ae60" style="background: #27ae60;"></div>
+                    </div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button id="cancelNotebookBtn" class="btn-secondary">Cancelar</button>
-                <button id="createNotebookBtn" class="btn-primary">Criar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal para editar nome do caderno -->
-    <div id="editNotebookModal" class="modal">
-        <div class="modal-content">
-            <h3><i class="fas fa-edit"></i> Editar Caderno</h3>
-            <div class="modal-body">
-                <input type="text" id="editNotebookName" placeholder="Novo nome do caderno" maxlength="50" autocomplete="off">
-            </div>
-            <div class="modal-actions">
-                <button id="cancelEditBtn" class="btn-secondary">Cancelar</button>
-                                <button id="saveEditBtn" class="btn-primary">Salvar</button>
+                <button id="createNotebookBtn" class="btn-primary">
+                    <i class="fas fa-sparkles"></i> Criar Caderno
+                </button>
             </div>
         </div>
     </div>
@@ -305,106 +346,154 @@
     <!-- Modal para nova folha -->
     <div id="sheetModal" class="modal">
         <div class="modal-content">
-            <h3><i class="fas fa-file-alt"></i> Nova Folha</h3>
+            <div class="modal-header">
+                <h3><i class="fas fa-file-medical"></i> Nova Folha</h3>
+                <p class="modal-subtitle">Dê um título à sua nova página</p>
+            </div>
             <div class="modal-body">
-                <input type="text" id="sheetName" placeholder="Título da folha" maxlength="100" autocomplete="off">
-            </div>
-            <div class="modal-actions">
-                <button id="cancelSheetBtn" class="btn-secondary">Cancelar</button>
-                <button id="createSheetBtn" class="btn-primary">Criar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de confirmação de exclusão -->
-    <div id="confirmModal" class="modal">
-        <div class="modal-content">
-            <h3><i class="fas fa-exclamation-triangle"></i> Confirmar Exclusão</h3>
-            <div class="modal-body">
-                <p id="confirmMessage">Tem certeza que deseja excluir esta folha?</p>
-            </div>
-            <div class="modal-actions">
-                <button id="cancelDeleteBtn" class="btn-secondary">Cancelar</button>
-                <button id="confirmDeleteBtn" class="btn-danger">Excluir</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de confirmação de exclusão do caderno -->
-    <div id="confirmNotebookModal" class="modal">
-        <div class="modal-content">
-            <h3><i class="fas fa-exclamation-triangle"></i> Excluir Caderno</h3>
-            <div class="modal-body">
-                <p id="confirmNotebookMessage">Tem certeza que deseja excluir este caderno? Todas as folhas serão perdidas!</p>
-            </div>
-            <div class="modal-actions">
-                <button id="cancelNotebookDeleteBtn" class="btn-secondary">Cancelar</button>
-                <button id="confirmNotebookDeleteBtn" class="btn-danger">Excluir</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de backup -->
-    <div id="backupModal" class="modal">
-        <div class="modal-content">
-            <h3><i class="fas fa-download"></i> Backup dos Dados</h3>
-            <div class="modal-body">
-                <div class="backup-info">
-                    <p><i class="fas fa-info-circle"></i> Isso criará um arquivo com todos os seus cadernos e folhas.</p>
-                    <div class="backup-stats" id="backupStats">
-                        <div class="stat">
-                            <span class="label">Cadernos:</span>
-                            <span class="value" id="backupNotebooks">0</span>
-                        </div>
-                        <div class="stat">
-                            <span class="label">Folhas:</span>
-                            <span class="value" id="backupSheets">0</span>
-                        </div>
-                        <div class="stat">
-                            <span class="label">Tamanho:</span>
-                            <span class="value" id="backupSize">0 KB</span>
-                        </div>
-                    </div>
+                <div class="input-with-icon">
+                    <i class="fas fa-heading"></i>
+                    <input type="text" id="sheetName" placeholder="Ex: Capítulo 1, Poema noturno, Ideia principal..." maxlength="100" autocomplete="off">
+                </div>
+                <div class="sheet-template">
+                    <p>Modelo:</p>
+                    <select id="sheetTemplate">
+                        <option value="blank">Página em branco</option>
+                        <option value="chapter">Capítulo de livro</option>
+                        <option value="poem">Formato poético</option>
+                        <option value="diary">Entrada de diário</option>
+                        <option value="notes">Anotações</option>
+                    </select>
                 </div>
             </div>
             <div class="modal-actions">
-                <button id="cancelBackupBtn" class="btn-secondary">Cancelar</button>
-                <button id="createBackupBtn" class="btn-primary">
-                    <i class="fas fa-download"></i> Criar Backup
+                <button id="cancelSheetBtn" class="btn-secondary">Cancelar</button>
+                <button id="createSheetBtn" class="btn-primary">
+                    <i class="fas fa-magic"></i> Criar Folha
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de restauração -->
-    <div id="restoreModal" class="modal">
+    <!-- Modal de personalização -->
+    <div id="customizeSheetModal" class="modal">
         <div class="modal-content">
-            <h3><i class="fas fa-upload"></i> Restaurar Backup</h3>
+            <div class="modal-header">
+                <h3><i class="fas fa-campfire"></i> Ambiente de Escrita</h3>
+                <p class="modal-subtitle">Configure a atmosfera da sua página</p>
+            </div>
             <div class="modal-body">
-                <div class="restore-info">
-                    <p><i class="fas fa-exclamation-triangle"></i> <strong>Atenção:</strong> Isso substituirá todos os dados atuais.</p>
-                    <p>Selecione um arquivo de backup (.escry):</p>
-                    <div class="file-input-area" id="restoreDropArea">
-                        <i class="fas fa-file-upload"></i>
-                        <p>Arraste o arquivo aqui</p>
-                        <p class="upload-hint">ou clique para selecionar</p>
-                        <input type="file" id="restoreFile" accept=".escry" hidden>
-                    </div>
-                    <div class="file-info" id="restoreFileInfo" style="display: none;">
-                        <div class="file-details">
-                            <i class="fas fa-file"></i>
-                            <div>
-                                <div class="file-name" id="restoreFileName"></div>
-                                <div class="file-size" id="restoreFileSize"></div>
+                <div class="customization-section">
+                    <h4><i class="fas fa-image"></i> Fundo da Página</h4>
+                    <div class="background-grid">
+                        <div class="bg-option" data-bg="none">
+                            <div class="bg-preview blank">
+                                <i class="fas fa-ban"></i>
                             </div>
+                            <span>Vazio</span>
                         </div>
+                        <div class="bg-option" data-bg="paper">
+                            <div class="bg-preview paper-texture"></div>
+                            <span>Papel</span>
+                        </div>
+                        <div class="bg-option" data-bg="dark">
+                            <div class="bg-preview dark-texture"></div>
+                            <span>Noturno</span>
+                        </div>
+                        <div class="bg-option" data-bg="custom">
+                            <div class="bg-preview custom">
+                                <i class="fas fa-upload"></i>
+                            </div>
+                            <span>Personalizar</span>
+                            <input type="file" id="bgImageUpload" accept="image/*" hidden>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="customization-section">
+                    <h4><i class="fas fa-tint"></i> Tom da Página</h4>
+                    <div class="color-palette">
+                        <div class="color-tone" data-tone="#f8f5e9" style="background: #f8f5e9;"></div>
+                        <div class="color-tone" data-tone="#ffffff" style="background: #ffffff;"></div>
+                        <div class="color-tone" data-tone="#f0f0f0" style="background: #f0f0f0;"></div>
+                        <div class="color-tone" data-tone="#1a1a2e" style="background: #1a1a2e;"></div>
+                        <div class="color-tone" data-tone="#2d3436" style="background: #2d3436;"></div>
+                        <div class="color-tone" data-tone="#fef9e7" style="background: #fef9e7;"></div>
+                    </div>
+                </div>
+                
+                <div class="customization-section">
+                    <h4><i class="fas fa-border-style"></i> Margens</h4>
+                    <div class="margin-options">
+                        <button class="margin-option active" data-margin="wide">Largas</button>
+                        <button class="margin-option" data-margin="normal">Normais</button>
+                        <button class="margin-option" data-margin="narrow">Estreitas</button>
+                        <button class="margin-option" data-margin="full">Cheia</button>
                     </div>
                 </div>
             </div>
             <div class="modal-actions">
-                <button id="cancelRestoreBtn" class="btn-secondary">Cancelar</button>
-                <button id="confirmRestoreBtn" class="btn-primary" disabled>
-                    <i class="fas fa-upload"></i> Restaurar
+                <button id="cancelCustomizeBtn" class="btn-secondary">Cancelar</button>
+                <button id="applyCustomizeBtn" class="btn-primary">
+                    <i class="fas fa-check"></i> Aplicar Ambiente
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de configurações de escrita -->
+    <div id="fontSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-pen-nib"></i> Configurar Escrita</h3>
+                <p class="modal-subtitle">Ajuste a aparência do seu texto</p>
+            </div>
+            <div class="modal-body">
+                <div class="font-section">
+                    <h4><i class="fas fa-font"></i> Tipografia</h4>
+                    <div class="font-grid">
+                        <div class="font-option" data-font="'Crimson Pro', serif">
+                            <div class="font-preview crimson">Aa</div>
+                            <span>Crimson</span>
+                        </div>
+                        <div class="font-option active" data-font="'Inter', sans-serif">
+                            <div class="font-preview inter">Aa</div>
+                            <span>Inter</span>
+                        </div>
+                        <div class="font-option" data-font="'Georgia', serif">
+                            <div class="font-preview georgia">Aa</div>
+                            <span>Georgia</span>
+                        </div>
+                        <div class="font-option" data-font="'Courier New', monospace">
+                            <div class="font-preview courier">Aa</div>
+                            <span>Courier</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="font-section">
+                    <h4><i class="fas fa-text-height"></i> Tamanho & Espaçamento</h4>
+                    <div class="slider-group">
+                        <label>Tamanho: <span id="fontSizeValue">18px</span></label>
+                        <input type="range" id="fontSize" min="14" max="24" step="1" value="18">
+                    </div>
+                    <div class="slider-group">
+                        <label>Entrelinha: <span id="lineHeightValue">1.6</span></label>
+                        <input type="range" id="lineHeight" min="1.2" max="2.2" step="0.1" value="1.6">
+                    </div>
+                </div>
+                
+                <div class="preview-section">
+                    <h4><i class="fas fa-eye"></i> Prévia</h4>
+                    <div class="font-preview-area" id="fontPreviewArea">
+                        A lua banha de prata as folhas do caderno, enquanto as palavras dançam na ponta da caneta, ansiosas por ganhar vida no papel em branco.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="cancelFontBtn" class="btn-secondary">Cancelar</button>
+                <button id="applyFontBtn" class="btn-primary">
+                    <i class="fas fa-check"></i> Aplicar Estilo
                 </button>
             </div>
         </div>
@@ -413,50 +502,30 @@
     <!-- Modal de imagem -->
     <div id="imageModal" class="modal">
         <div class="modal-content">
-            <h3><i class="fas fa-image"></i> Inserir Imagem</h3>
+            <div class="modal-header">
+                <h3><i class="fas fa-image"></i> Inserir Imagem</h3>
+                <p class="modal-subtitle">Adicione uma imagem à sua história</p>
+            </div>
             <div class="modal-body">
+                <div class="image-upload-area" id="imageUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Arraste uma imagem aqui ou clique para selecionar</p>
+                    <input type="file" id="imageFile" accept="image/*" hidden>
+                </div>
+                <div class="image-preview" id="imagePreview" style="display: none;">
+                    <img id="previewImage" src="" alt="Prévia">
+                </div>
                 <div class="image-options">
-                    <div class="option-tabs">
-                        <button class="option-tab active" data-option="upload">Upload</button>
-                        <button class="option-tab" data-option="url">URL</button>
+                    <div class="input-group">
+                        <label for="imageAlt">Descrição:</label>
+                        <input type="text" id="imageAlt" placeholder="O que esta imagem representa?">
                     </div>
-                    <div class="option-content active" id="uploadOption">
-                        <div class="upload-image-area" id="imageUploadArea">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Arraste uma imagem aqui</p>
-                            <p class="upload-hint">ou clique para selecionar</p>
-                            <input type="file" id="imageFile" accept="image/*" hidden>
-                        </div>
-                        <div class="image-preview" id="imagePreview" style="display: none;">
-                            <img id="previewImage" src="" alt="Prévia">
-                            <button id="removePreview" class="btn-danger btn-small">
-                                <i class="fas fa-times"></i> Remover
-                            </button>
-                        </div>
-                    </div>
-                    <div class="option-content" id="urlOption">
-                        <div class="input-group">
-                            <label for="imageUrl">URL da imagem:</label>
-                            <input type="url" id="imageUrl" placeholder="https://exemplo.com/imagem.jpg">
-                        </div>
-                        <div class="url-preview" id="urlPreview" style="display: none;">
-                            <img id="urlPreviewImage" src="" alt="Prévia URL">
-                        </div>
-                    </div>
-                    <div class="image-options-extra">
-                        <div class="input-group">
-                            <label for="imageAlt">Texto alternativo:</label>
-                            <input type="text" id="imageAlt" placeholder="Descrição da imagem">
-                        </div>
-                        <div class="input-group">
-                            <label for="imageSize">Tamanho:</label>
-                            <select id="imageSize">
-                                <option value="auto">Automático</option>
-                                <option value="small">Pequena</option>
-                                <option value="medium">Média</option>
-                                <option value="large">Grande</option>
-                                <option value="full">Largura total</option>
-                            </select>
+                    <div class="size-options">
+                        <label>Tamanho:</label>
+                        <div class="size-buttons">
+                            <button class="size-btn active" data-size="responsive">Automático</button>
+                            <button class="size-btn" data-size="medium">Médio</button>
+                            <button class="size-btn" data-size="large">Grande</button>
                         </div>
                     </div>
                 </div>
@@ -464,183 +533,126 @@
             <div class="modal-actions">
                 <button id="cancelImageBtn" class="btn-secondary">Cancelar</button>
                 <button id="insertImageBtn" class="btn-primary" disabled>
-                    <i class="fas fa-image"></i> Inserir
+                    <i class="fas fa-image"></i> Inserir Imagem
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal para personalizar folha -->
-    <div id="customizeSheetModal" class="modal">
+    <!-- Modal de exportação -->
+    <div id="exportModal" class="modal">
         <div class="modal-content">
-            <h3><i class="fas fa-paint-brush"></i> Personalizar Folha</h3>
+            <div class="modal-header">
+                <h3><i class="fas fa-file-export"></i> Exportar</h3>
+                <p class="modal-subtitle">Salve sua história em diferentes formatos</p>
+            </div>
             <div class="modal-body">
-                <div class="customization-options">
-                    <div class="option-section">
-                        <h4><i class="fas fa-image"></i> Imagem de Fundo</h4>
-                        <div class="background-options">
-                            <div class="bg-option" data-bg="none">
-                                <div class="bg-preview none">
-                                    <i class="fas fa-ban"></i>
-                                </div>
-                                <span>Sem fundo</span>
-                            </div>
-                            <div class="bg-option" data-bg="custom">
-                                <div class="bg-preview custom">
-                                    <i class="fas fa-upload"></i>
-                                </div>
-                                <span>Upload</span>
-                                <input type="file" id="bgImageUpload" accept="image/*" hidden>
-                            </div>
+                <div class="export-options">
+                    <div class="export-option" data-format="pdf">
+                        <i class="fas fa-file-pdf"></i>
+                        <div>
+                            <h4>PDF</h4>
+                            <p>Formato universal para leitura</p>
                         </div>
                     </div>
-                    
-                    <div class="option-section">
-                        <h4><i class="fas fa-sliders-h"></i> Ajustes</h4>
-                        <div class="adjustment-sliders">
-                            <div class="slider-group">
-                                <label for="bgOpacity">Opacidade:</label>
-                                <div class="slider-container">
-                                    <input type="range" id="bgOpacity" min="0" max="1" step="0.1" value="0.1">
-                                    <span id="opacityValue">10%</span>
-                                </div>
-                            </div>
-                            <div class="slider-group">
-                                <label for="bgBlur">Desfoque:</label>
-                                <div class="slider-container">
-                                    <input type="range" id="bgBlur" min="0" max="20" step="1" value="0">
-                                    <span id="blurValue">0px</span>
-                                </div>
-                            </div>
+                    <div class="export-option" data-format="txt">
+                        <i class="fas fa-file-alt"></i>
+                        <div>
+                            <h4>Texto Simples</h4>
+                            <p>Compatível com qualquer editor</p>
                         </div>
                     </div>
-                    
-                    <div class="preview-section">
-                        <h4><i class="fas fa-eye"></i> Prévia</h4>
-                        <div class="preview-area" id="bgPreviewArea">
-                            <!-- Preview será gerado aqui -->
+                    <div class="export-option" data-format="html">
+                        <i class="fas fa-code"></i>
+                        <div>
+                            <h4>HTML</h4>
+                            <p>Preserva formatação e imagens</p>
+                        </div>
+                    </div>
+                    <div class="export-option" data-format="docx">
+                        <i class="fas fa-file-word"></i>
+                        <div>
+                            <h4>Documento</h4>
+                            <p>Editável em processadores de texto</p>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-actions">
-                <button id="cancelCustomizeBtn" class="btn-secondary">Cancelar</button>
-                <button id="applyCustomizeBtn" class="btn-primary">
-                    <i class="fas fa-check"></i> Aplicar
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de configurações de fonte -->
-    <div id="fontSettingsModal" class="modal">
-        <div class="modal-content">
-            <h3><i class="fas fa-font"></i> Configurações de Fonte</h3>
-            <div class="modal-body">
-                <div class="font-options">
-                    <div class="font-option-group">
-                        <label for="fontFamily">Família da Fonte:</label>
-                        <select id="fontFamily">
-                            <option value="'Inter', sans-serif">Inter (Padrão)</option>
-                            <option value="'Arial', sans-serif">Arial</option>
-                            <option value="'Times New Roman', serif">Times New Roman</option>
-                            <option value="'Georgia', serif">Georgia</option>
-                            <option value="'Courier New', monospace">Courier New</option>
-                            <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
-                        </select>
-                    </div>
-                    
-                    <div class="font-option-group">
-                        <label for="fontSize">Tamanho da Fonte:</label>
-                        <div class="slider-container">
-                            <input type="range" id="fontSize" min="12" max="36" step="1" value="18">
-                            <span id="fontSizeValue">18px</span>
-                        </div>
-                    </div>
-                    
-                    <div class="font-option-group">
-                        <label for="lineHeight">Espaçamento entre Linhas:</label>
-                        <div class="slider-container">
-                            <input type="range" id="lineHeight" min="1.2" max="2.5" step="0.1" value="1.8">
-                            <span id="lineHeightValue">1.8</span>
-                        </div>
-                    </div>
-                    
-                    <div class="font-option-group">
-                        <label for="letterSpacing">Espaçamento entre Letras:</label>
-                        <div class="slider-container">
-                            <input type="range" id="letterSpacing" min="-1" max="5" step="0.1" value="0">
-                            <span id="letterSpacingValue">0px</span>
-                        </div>
-                    </div>
-                    
-                    <div class="preview-section">
-                        <h4><i class="fas fa-eye"></i> Prévia</h4>
-                        <div class="font-preview-area" id="fontPreviewArea">
-                            O rato roeu a roupa do rei de Roma.
-                        </div>
-                    </div>
+                <div class="export-settings">
+                    <label>
+                        <input type="checkbox" id="includeMetadata" checked>
+                        Incluir metadados (data, título, contagem)
+                    </label>
                 </div>
             </div>
             <div class="modal-actions">
-                <button id="cancelFontBtn" class="btn-secondary">Cancelar</button>
-                <button id="applyFontBtn" class="btn-primary">
-                    <i class="fas fa-check"></i> Aplicar
+                <button id="cancelExportBtn" class="btn-secondary">Cancelar</button>
+                <button id="confirmExportBtn" class="btn-primary">
+                    <i class="fas fa-download"></i> Exportar
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de capa do caderno -->
+    <!-- Modal de capa -->
     <div id="coverModal" class="modal">
         <div class="modal-content">
-            <h3><i class="fas fa-camera"></i> Escolher Capa</h3>
+            <div class="modal-header">
+                <h3><i class="fas fa-palette"></i> Capa do Caderno</h3>
+                <p class="modal-subtitle">Personalize a aparência do seu caderno</p>
+            </div>
             <div class="modal-body">
-                <div class="cover-options">
-                    <div class="cover-option active" data-cover="default">
+                <div class="cover-presets">
+                    <div class="cover-preset" data-cover="default">
                         <div class="cover-preview default">
                             <i class="fas fa-book"></i>
                         </div>
                         <span>Padrão</span>
                     </div>
-                    <div class="cover-option" data-cover="custom">
+                    <div class="cover-preset" data-cover="leather">
+                        <div class="cover-preview leather"></div>
+                        <span>Couro</span>
+                    </div>
+                    <div class="cover-preset" data-cover="fabric">
+                        <div class="cover-preview fabric"></div>
+                        <span>Tecido</span>
+                    </div>
+                    <div class="cover-preset" data-cover="custom">
                         <div class="cover-preview custom">
                             <i class="fas fa-upload"></i>
                         </div>
-                        <span>Personalizada</span>
+                        <span>Personalizar</span>
                     </div>
                 </div>
-                <div class="cover-custom-upload" id="coverCustomUpload" style="display: none;">
-                    <div class="upload-area-small" id="coverUploadArea">
+                
+                <div class="custom-cover-upload" id="customCoverUpload" style="display: none;">
+                    <div class="upload-cover-area" id="coverUploadArea">
                         <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Clique para escolher imagem</p>
+                        <p>Escolha uma imagem para a capa</p>
                         <input type="file" id="coverFile" accept="image/*" hidden>
-                    </div>
-                    <div class="cover-preview-custom" id="coverPreview" style="display: none;">
-                        <img id="previewCover" src="" alt="Prévia da capa">
                     </div>
                 </div>
             </div>
             <div class="modal-actions">
                 <button id="cancelCoverBtn" class="btn-secondary">Cancelar</button>
                 <button id="applyCoverBtn" class="btn-primary">
-                    <i class="fas fa-check"></i> Aplicar
+                    <i class="fas fa-check"></i> Aplicar Capa
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de instruções de instalação -->
-    <div id="installInstructionsModal" class="modal">
+    <!-- Modal de confirmação -->
+    <div id="confirmModal" class="modal">
         <div class="modal-content">
-            <h3><i class="fas fa-mobile-alt"></i> Instalar Aplicativo</h3>
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-circle"></i> Confirmação</h3>
+            </div>
             <div class="modal-body">
-                <div class="install-instructions" id="installInstructions">
-                    <!-- Instruções serão inseridas aqui -->
-                </div>
+                <p id="confirmMessage">Tem certeza que deseja realizar esta ação?</p>
             </div>
             <div class="modal-actions">
-                <button id="closeInstallInstructions" class="btn-primary">Entendi</button>
+                <button id="cancelConfirmBtn" class="btn-secondary">Cancelar</button>
+                <button id="confirmActionBtn" class="btn-danger">Confirmar</button>
             </div>
         </div>
     </div>
@@ -649,40 +661,77 @@
     <div id="notification" class="notification">
         <div class="notification-content">
             <i class="fas fa-check-circle"></i>
-            <span id="notificationText">Salvo com sucesso!</span>
+            <div class="notification-text">
+                <strong id="notificationTitle">Sucesso!</strong>
+                <span id="notificationText">Ação realizada com sucesso</span>
+            </div>
         </div>
     </div>
 
-    <!-- Audio player (invisível) -->
+    <!-- Audio player -->
     <audio id="audioPlayer" hidden></audio>
 
-    <!-- Script para músicas padrão -->
+    <!-- Script de músicas padrão -->
     <script id="default-music-config" type="application/json">
     {
-        "tracks": [
+        "focus": [
             {
-                "id": "default-1",
-                "title": "Música Calma 1",
-                "artist": "ESCRITY",
-                "duration": "2:30",
-                "url": "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",
-                "type": "default"
-            },
-            {
-                "id": "default-2",
-                "title": "Música Calma 2",
-                "artist": "ESCRITY",
-                "duration": "3:15",
+                "id": "focus-1",
+                "title": "Concentração Profunda",
+                "artist": "Fluxo de Trabalho",
+                "duration": "25:00",
                 "url": "https://assets.mixkit.co/music/preview/mixkit-driving-ambition-32.mp3",
-                "type": "default"
+                "type": "focus",
+                "color": "#3498db"
             },
             {
-                "id": "default-3",
-                "title": "Música Calma 3",
-                "artist": "ESCRITY",
-                "duration": "2:45",
+                "id": "focus-2",
+                "title": "Foco Zen",
+                "artist": "Meditação Ativa",
+                "duration": "30:00",
+                "url": "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",
+                "type": "focus",
+                "color": "#2ecc71"
+            }
+        ],
+        "creative": [
+            {
+                "id": "creative-1",
+                "title": "Inspiração Noturna",
+                "artist": "Museu Criativo",
+                "duration": "45:00",
                 "url": "https://assets.mixkit.co/music/preview/mixkit-deep-urban-623.mp3",
-                "type": "default"
+                "type": "creative",
+                "color": "#9b59b6"
+            },
+            {
+                "id": "creative-2",
+                "title": "Fluxo de Ideias",
+                "artist": "Oceano Mental",
+                "duration": "50:00",
+                "url": "https://assets.mixkit.co/music/preview/mixkit-piano-melody-1116.mp3",
+                "type": "creative",
+                "color": "#e74c3c"
+            }
+        ],
+        "ambient": [
+            {
+                "id": "ambient-1",
+                "title": "Chuva na Janela",
+                "artist": "Natureza",
+                "duration": "60:00",
+                "url": "https://assets.mixkit.co/sfx/preview/mixkit-rain-loop-1245.mp3",
+                "type": "ambient",
+                "color": "#34495e"
+            },
+            {
+                "id": "ambient-2",
+                "title": "Fogueira Noturna",
+                "artist": "Elementos",
+                "duration": "40:00",
+                "url": "https://assets.mixkit.co/sfx/preview/mixkit-campfire-crackles-1321.mp3",
+                "type": "ambient",
+                "color": "#e67e22"
             }
         ]
     }
@@ -690,62 +739,31 @@
 
     <script src="script.js"></script>
     <script>
-    // Verificação de Service Worker
+    // Configurações de Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
             navigator.serviceWorker.register('sw.js')
                 .then(function(registration) {
-                    console.log('ServiceWorker registrado com sucesso: ', registration.scope);
+                    console.log('ESCRITY: Service Worker registrado');
                     
-                    // Verificar se há atualizações
+                    // Verificar atualizações
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;
-                        console.log('Novo Service Worker encontrado!');
                         
                         newWorker.addEventListener('statechange', () => {
-                            console.log('Novo Service Worker estado:', newWorker.state);
-                            
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                console.log('Nova versão disponível!');
-                                
-                                // Mostrar notificação para atualizar
-                                if (confirm('Uma nova versão está disponível. Atualizar agora?')) {
-                                    newWorker.postMessage({type: 'SKIP_WAITING'});
-                                    window.location.reload();
-                                }
+                                console.log('ESCRITY: Nova versão disponível');
                             }
                         });
                     });
                 })
                 .catch(function(err) {
-                    console.log('Falha ao registrar ServiceWorker: ', err);
+                    console.log('ESCRITY: Service Worker não registrado:', err);
                 });
-        });
-        
-        // Ouvir mensagens do Service Worker
-        navigator.serviceWorker.addEventListener('message', event => {
-            if (event.data && event.data.type === 'SW_ACTIVATED') {
-                console.log('Service Worker ativado, versão:', event.data.version);
-            }
         });
     }
     
-    // Prevenir zoom em dispositivos móveis
-    document.addEventListener('gesturestart', function (e) {
-        e.preventDefault();
-    });
-    
-    // Prevenir double-tap zoom
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', function (event) {
-        const now = (new Date()).getTime();
-        if (now - lastTouchEnd <= 300) {
-            event.preventDefault();
-        }
-        lastTouchEnd = now;
-    }, false);
-    
-    // Corrigir altura em mobile
+    // Ajuste de altura mobile
     function fixMobileHeight() {
         const vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -754,6 +772,21 @@
     window.addEventListener('resize', fixMobileHeight);
     window.addEventListener('orientationchange', fixMobileHeight);
     fixMobileHeight();
+    
+    // Prevenir zoom duplo toque
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
+    
+    // Prevenir gestos de zoom
+    document.addEventListener('gesturestart', function (e) {
+        e.preventDefault();
+    });
     </script>
 </body>
 </html>
