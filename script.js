@@ -118,69 +118,93 @@ class EscrityApp {
             } catch (e) {
                 console.error('ESCRITY: Erro ao carregar dados:', e);
                 this.notebooks = [];
+                this.createDefaultNotebook();
             }
         } else {
             this.notebooks = [];
+            this.createDefaultNotebook();
         }
     }
 
     saveData() {
         console.log('ESCRITY: Guardando histórias...');
         
-        const data = {
-            notebooks: this.notebooks,
-            fontSettings: this.fontSettings,
-            textColor: this.currentTextColor,
-            lastSave: new Date().toISOString(),
-            version: '3.0'
-        };
-        
-        // Salvar localmente
-        localStorage.setItem('escry-data', JSON.stringify(data));
-        console.log('ESCRITY: Histórias guardadas com segurança');
-        
-        this.updateLastSaved();
-        this.unsavedChanges = false;
-        document.getElementById('saveBtn').classList.remove('unsaved');
-        document.getElementById('saveBtn').innerHTML = '<i class="fas fa-save"></i> <span class="save-text">Guardado</span>';
-        
-        // Criar backup automático
-        this.createAutoBackup();
+        try {
+            const data = {
+                notebooks: this.notebooks,
+                fontSettings: this.fontSettings,
+                textColor: this.currentTextColor,
+                lastSave: new Date().toISOString(),
+                version: '3.0'
+            };
+            
+            // Salvar localmente
+            localStorage.setItem('escry-data', JSON.stringify(data));
+            console.log('ESCRITY: Histórias guardadas com segurança');
+            
+            this.updateLastSaved();
+            this.unsavedChanges = false;
+            
+            // Atualizar botão de salvar
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.classList.remove('unsaved');
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> <span class="save-text">Guardado</span>';
+            
+            // Criar backup automático
+            this.createAutoBackup();
+            
+            return true;
+        } catch (error) {
+            console.error('ESCRITY: Erro ao salvar dados:', error);
+            this.showNotification('Erro', 'Não foi possível salvar seus dados.', 'error');
+            return false;
+        }
     }
 
     createAutoBackup() {
-        const today = new Date().toISOString().split('T')[0];
-        const backupId = `backup-${today}-${Date.now()}`;
-        
-        const backupData = {
-            id: backupId,
-            app: 'ESCRITY',
-            version: '3.0',
-            date: new Date().toISOString(),
-            notebooks: this.notebooks,
-            settings: {
-                fontSettings: this.fontSettings,
-                textColor: this.currentTextColor
-            }
-        };
-        
-        // Salvar backup
-        localStorage.setItem(`escry-backup-${backupId}`, JSON.stringify(backupData));
-        
-        // Manter apenas últimos 30 backups
-        this.cleanOldBackups();
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const backupId = `backup-auto-${today}-${Date.now()}`;
+            
+            const backupData = {
+                id: backupId,
+                app: 'ESCRITY',
+                version: '3.0',
+                date: new Date().toISOString(),
+                notebooks: this.notebooks,
+                settings: {
+                    fontSettings: this.fontSettings,
+                    textColor: this.currentTextColor
+                }
+            };
+            
+            // Salvar backup
+            localStorage.setItem(`escry-backup-${backupId}`, JSON.stringify(backupData));
+            
+            // Manter apenas últimos 30 backups
+            this.cleanOldBackups();
+            
+            return true;
+        } catch (error) {
+            console.error('ESCRITY: Erro ao criar backup automático:', error);
+            return false;
+        }
     }
 
     cleanOldBackups() {
-        const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('escry-backup-'));
-        
-        if (backupKeys.length > 30) {
-            // Ordenar por data (mais antigo primeiro)
-            backupKeys.sort();
+        try {
+            const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('escry-backup-'));
             
-            // Remover backups antigos
-            const toRemove = backupKeys.slice(0, backupKeys.length - 30);
-            toRemove.forEach(key => localStorage.removeItem(key));
+            if (backupKeys.length > 30) {
+                // Ordenar por data (mais antigo primeiro)
+                backupKeys.sort();
+                
+                // Remover backups antigos
+                const toRemove = backupKeys.slice(0, backupKeys.length - 30);
+                toRemove.forEach(key => localStorage.removeItem(key));
+            }
+        } catch (error) {
+            console.error('ESCRITY: Erro ao limpar backups antigos:', error);
         }
     }
 
@@ -190,10 +214,8 @@ class EscrityApp {
             'Tem certeza? Todas as suas histórias serão perdidas permanentemente.',
             () => {
                 localStorage.removeItem('escry-data');
-                localStorage.removeItem('escry-music');
-                localStorage.removeItem('escry-settings');
                 
-                // Remover apenas backups, manter música
+                // Remover backups, manter música
                 const keysToRemove = Object.keys(localStorage).filter(key => 
                     key.startsWith('escry-backup-')
                 );
@@ -218,7 +240,7 @@ class EscrityApp {
         const defaultNotebook = {
             id: 'notebook-' + Date.now(),
             name: 'Meu Primeiro Caderno',
-            cover: 'default.jpg',
+            cover: 'default',
             customCover: null,
             color: '#1a1a2e',
             created: new Date().toISOString(),
@@ -253,6 +275,8 @@ class EscrityApp {
 
     renderNotebooks() {
         const container = document.getElementById('notebooksList');
+        if (!container) return;
+        
         container.innerHTML = '';
         
         if (this.notebooks.length === 0) {
@@ -300,15 +324,22 @@ class EscrityApp {
                 }
             };
             
-            div.querySelector('.edit').onclick = (e) => {
-                e.stopPropagation();
-                this.editNotebook(notebook.id);
-            };
+            const editBtn = div.querySelector('.edit');
+            const deleteBtn = div.querySelector('.delete');
             
-            div.querySelector('.delete').onclick = (e) => {
-                e.stopPropagation();
-                this.deleteNotebook(notebook.id);
-            };
+            if (editBtn) {
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.editNotebook(notebook.id);
+                };
+            }
+            
+            if (deleteBtn) {
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.deleteNotebook(notebook.id);
+                };
+            }
             
             container.appendChild(div);
         });
@@ -322,6 +353,7 @@ class EscrityApp {
 
     renderSheets() {
         const container = document.getElementById('sheetsList');
+        if (!container) return;
         
         if (!this.currentNotebook || !this.currentNotebook.sheets || this.currentNotebook.sheets.length === 0) {
             container.innerHTML = `
@@ -359,11 +391,18 @@ class EscrityApp {
         });
         
         // Atualizar contador
-        document.getElementById('currentNotebookCount').textContent = 
-            `${this.currentNotebook.sheets.length} ${this.currentNotebook.sheets.length === 1 ? 'folha' : 'folhas'}`;
+        const countElement = document.getElementById('currentNotebookCount');
+        if (countElement) {
+            countElement.textContent = 
+                `${this.currentNotebook.sheets.length} ${this.currentNotebook.sheets.length === 1 ? 'folha' : 'folhas'}`;
+        }
     }
 
     showSheetContextMenu(e, sheet) {
+        // Remover menus de contexto existentes
+        const existingMenus = document.querySelectorAll('.context-menu');
+        existingMenus.forEach(menu => menu.remove());
+        
         const menu = document.createElement('div');
         menu.className = 'context-menu';
         menu.style.cssText = `
@@ -398,7 +437,9 @@ class EscrityApp {
         
         // Fechar menu ao clicar fora
         const closeMenu = () => {
-            document.body.removeChild(menu);
+            if (document.body.contains(menu)) {
+                document.body.removeChild(menu);
+            }
             document.removeEventListener('click', closeMenu);
         };
         
@@ -457,6 +498,12 @@ class EscrityApp {
         
         // Mostrar seção de folhas
         document.getElementById('sheetsSection').style.display = 'block';
+        
+        // Fechar menu mobile se estiver aberto
+        if (window.innerWidth <= 992) {
+            document.getElementById('mainSidebar').classList.remove('active');
+            document.getElementById('mobileOverlay').classList.remove('active');
+        }
     }
 
     selectSheet(id) {
@@ -476,23 +523,25 @@ class EscrityApp {
         
         // Carregar conteúdo
         const editor = document.getElementById('editor');
-        editor.innerHTML = sheet.content || '<p class="placeholder">Comece a escrever sua história aqui...</p>';
-        
-        // Aplicar cor do texto
-        editor.style.color = this.currentTextColor;
-        
-        // Aplicar configurações de fonte
-        if (sheet.fontSettings) {
-            this.applyFontSettings(sheet.fontSettings);
-        } else {
-            this.applyFontSettings(this.fontSettings);
-        }
-        
-        // Aplicar personalização
-        if (sheet.customization) {
-            this.applySheetCustomization(sheet.customization);
-        } else {
-            this.clearSheetCustomization();
+        if (editor) {
+            editor.innerHTML = sheet.content || '<p class="placeholder">Comece a escrever sua história aqui...</p>';
+            
+            // Aplicar cor do texto
+            editor.style.color = this.currentTextColor;
+            
+            // Aplicar configurações de fonte
+            if (sheet.fontSettings) {
+                this.applyFontSettings(sheet.fontSettings);
+            } else {
+                this.applyFontSettings(this.fontSettings);
+            }
+            
+            // Aplicar personalização
+            if (sheet.customization) {
+                this.applySheetCustomization(sheet.customization);
+            } else {
+                this.clearSheetCustomization();
+            }
         }
         
         // Atualizar contadores
@@ -503,17 +552,24 @@ class EscrityApp {
         
         // Focar no editor
         setTimeout(() => {
-            editor.focus();
-            this.moveCursorToEnd(editor);
+            if (editor) {
+                editor.focus();
+                this.moveCursorToEnd(editor);
+            }
         }, 100);
     }
 
     createNotebook(name, color = '#1a1a2e') {
+        if (!name || name.trim() === '') {
+            this.showNotification('Nome necessário', 'Digite um nome para o caderno.', 'error');
+            return;
+        }
+        
         const id = 'notebook-' + Date.now();
         const newNotebook = {
             id,
-            name,
-            cover: 'default.jpg',
+            name: name.trim(),
+            cover: 'default',
             customCover: null,
             color,
             created: new Date().toISOString(),
@@ -572,7 +628,7 @@ class EscrityApp {
         
         return {
             id: 'sheet-' + Date.now(),
-            title,
+            title: title || 'Nova Folha',
             content,
             created: new Date().toISOString(),
             updated: new Date().toISOString(),
@@ -589,9 +645,17 @@ class EscrityApp {
     }
 
     addSheet(title, template = 'blank') {
-        if (!this.currentNotebook) return;
+        if (!this.currentNotebook) {
+            this.showNotification('Selecione um caderno', 'Escolha um caderno primeiro.', 'error');
+            return;
+        }
         
-        const newSheet = this.createNewSheet(title, template);
+        if (!title || title.trim() === '') {
+            this.showNotification('Título necessário', 'Digite um título para a folha.', 'error');
+            return;
+        }
+        
+        const newSheet = this.createNewSheet(title.trim(), template);
         this.currentNotebook.sheets.push(newSheet);
         this.currentNotebook.updated = new Date().toISOString();
         
@@ -694,8 +758,6 @@ class EscrityApp {
         const notebook = this.notebooks.find(n => n.id === notebookId);
         if (!notebook) return;
         
-        this.editingNotebookId = notebookId;
-        
         const newName = prompt('Novo nome do caderno:', notebook.name);
         if (newName && newName.trim() && newName !== notebook.name) {
             notebook.name = newName.trim();
@@ -710,24 +772,28 @@ class EscrityApp {
             
             this.showNotification('Caderno renomeado', `Agora se chama "${newName}".`, 'success');
         }
-        
-        this.editingNotebookId = null;
     }
 
     // ========== EDITOR E FORMATAÇÃO ==========
 
     saveContent() {
-        if (!this.currentSheet) return;
+        if (!this.currentSheet) {
+            this.showNotification('Nenhuma folha selecionada', 'Selecione uma folha para salvar.', 'warning');
+            return;
+        }
         
         const editor = document.getElementById('editor');
-        const content = editor.innerHTML;
+        if (!editor) return;
+        
+        let content = editor.innerHTML;
         
         // Remover placeholder se existir
         if (content.includes('placeholder')) {
-            editor.innerHTML = content.replace('placeholder', '');
+            content = content.replace(/placeholder/g, '');
+            editor.innerHTML = content;
         }
         
-        this.currentSheet.content = editor.innerHTML;
+        this.currentSheet.content = content;
         this.currentSheet.updated = new Date().toISOString();
         
         // Salvar configurações de fonte atuais
@@ -740,24 +806,27 @@ class EscrityApp {
             this.currentNotebook.updated = new Date().toISOString();
         }
         
-        this.saveData();
-        this.updateLastSaved();
-        
-        this.showNotification('História guardada', 'Seu progresso foi salvo com segurança.', 'success');
+        if (this.saveData()) {
+            this.showNotification('História guardada', 'Seu progresso foi salvo com segurança.', 'success');
+        }
     }
 
     saveCurrentContent() {
-        if (this.currentSheet) {
+        if (this.currentSheet && document.getElementById('editor')) {
             const content = document.getElementById('editor').innerHTML;
             this.currentSheet.content = content;
             this.currentSheet.updated = new Date().toISOString();
             this.extractImagesFromContent();
             this.currentSheet.fontSettings = { ...this.fontSettings };
+            return true;
         }
+        return false;
     }
 
     setupAutoSave() {
         const editor = document.getElementById('editor');
+        if (!editor) return;
+        
         let saveTimeout;
         
         editor.addEventListener('input', () => {
@@ -778,16 +847,24 @@ class EscrityApp {
 
     updateCounters() {
         const editor = document.getElementById('editor');
+        if (!editor) return;
+        
         const text = editor.textContent || '';
         
         // Contagem de caracteres
         const charCount = text.length;
-        document.getElementById('charCount').textContent = `${charCount.toLocaleString()} caracteres`;
+        const charCountElement = document.getElementById('charCount');
+        if (charCountElement) {
+            charCountElement.textContent = `${charCount.toLocaleString()} caracteres`;
+        }
         
         // Contagem de palavras
         const words = text.trim().split(/\s+/).filter(word => word.length > 0);
         const wordCount = words.length;
-        document.getElementById('wordCount').textContent = wordCount.toLocaleString();
+        const wordCountElement = document.getElementById('wordCount');
+        if (wordCountElement) {
+            wordCountElement.textContent = wordCount.toLocaleString();
+        }
     }
 
     updateLastSaved() {
@@ -796,18 +873,30 @@ class EscrityApp {
             hour: '2-digit', 
             minute: '2-digit'
         });
-        document.getElementById('lastSaved').textContent = `Salvo às ${timeStr}`;
+        const lastSavedElement = document.getElementById('lastSaved');
+        if (lastSavedElement) {
+            lastSavedElement.textContent = `Salvo às ${timeStr}`;
+        }
     }
 
     checkUnsavedChanges() {
-        if (!this.currentSheet) return;
+        if (!this.currentSheet || !document.getElementById('editor')) return;
         
         const currentContent = document.getElementById('editor').innerHTML;
         if (currentContent !== this.currentSheet.content) {
             this.unsavedChanges = true;
             const saveBtn = document.getElementById('saveBtn');
-            saveBtn.innerHTML = '<i class="fas fa-save"></i> <span class="save-text">Guardar *</span>';
-            saveBtn.classList.add('unsaved');
+            if (saveBtn) {
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> <span class="save-text">Guardar *</span>';
+                saveBtn.classList.add('unsaved');
+            }
+        } else {
+            this.unsavedChanges = false;
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> <span class="save-text">Guardado</span>';
+                saveBtn.classList.remove('unsaved');
+            }
         }
     }
 
@@ -819,16 +908,22 @@ class EscrityApp {
         // Aplicar cor do texto se for seleção de texto
         if (command === 'foreColor' || command === 'hiliteColor') {
             const editor = document.getElementById('editor');
-            editor.focus();
+            if (editor) {
+                editor.focus();
+            }
         }
     }
 
     changeTextColor() {
         const colorPicker = document.getElementById('textColorPicker');
+        if (!colorPicker) return;
+        
         this.currentTextColor = colorPicker.value;
         
         const editor = document.getElementById('editor');
-        editor.style.color = this.currentTextColor;
+        if (editor) {
+            editor.style.color = this.currentTextColor;
+        }
         
         this.unsavedChanges = true;
         this.checkUnsavedChanges();
@@ -839,6 +934,8 @@ class EscrityApp {
 
     insertImage() {
         const fileInput = document.getElementById('imageFile');
+        if (!fileInput) return;
+        
         fileInput.click();
         
         fileInput.onchange = (e) => {
@@ -859,6 +956,8 @@ class EscrityApp {
                 
                 // Inserir no editor
                 const editor = document.getElementById('editor');
+                if (!editor) return;
+                
                 const selection = window.getSelection();
                 
                 if (selection.rangeCount) {
@@ -895,6 +994,8 @@ class EscrityApp {
         const hr = document.createElement('hr');
         
         const editor = document.getElementById('editor');
+        if (!editor) return;
+        
         const selection = window.getSelection();
         
         if (selection.rangeCount) {
@@ -926,6 +1027,8 @@ class EscrityApp {
         blockquote.innerHTML = '<p>Sua citação aqui...</p>';
         
         const editor = document.getElementById('editor');
+        if (!editor) return;
+        
         const selection = window.getSelection();
         
         if (selection.rangeCount) {
@@ -956,6 +1059,8 @@ class EscrityApp {
         if (!this.currentSheet) return;
         
         const editor = document.getElementById('editor');
+        if (!editor) return;
+        
         const images = editor.querySelectorAll('img');
         const imageData = [];
         
@@ -974,13 +1079,20 @@ class EscrityApp {
     }
 
     clearEditor() {
-        document.getElementById('currentNotebookTitle').textContent = 'Selecione um caderno';
-        document.getElementById('currentSheetTitle').textContent = 'Nenhuma folha selecionada';
-        document.getElementById('sheetDate').textContent = '';
-        document.getElementById('editor').innerHTML = '<p class="placeholder">Selecione uma folha para começar a escrever...</p>';
+        const notebookTitle = document.getElementById('currentNotebookTitle');
+        const sheetTitle = document.getElementById('currentSheetTitle');
+        const sheetDate = document.getElementById('sheetDate');
+        const editor = document.getElementById('editor');
+        const notebookCount = document.getElementById('currentNotebookCount');
+        
+        if (notebookTitle) notebookTitle.textContent = 'Selecione um caderno';
+        if (sheetTitle) sheetTitle.textContent = 'Nenhuma folha selecionada';
+        if (sheetDate) sheetDate.textContent = '';
+        if (editor) editor.innerHTML = '<p class="placeholder">Selecione uma folha para começar a escrever...</p>';
+        if (notebookCount) notebookCount.textContent = '0 folhas';
+        
         this.clearSheetCustomization();
         this.updateCounters();
-        document.getElementById('currentNotebookCount').textContent = '0 folhas';
     }
 
     // ========== PERSONALIZAÇÃO ==========
@@ -992,6 +1104,8 @@ class EscrityApp {
         }
         
         const modal = document.getElementById('customizeSheetModal');
+        if (!modal) return;
+        
         modal.classList.add('active');
         
         // Carregar configurações atuais
@@ -1022,6 +1136,13 @@ class EscrityApp {
 
     applySheetCustomization(customization) {
         const editor = document.getElementById('editor');
+        if (!editor) return;
+        
+        // Resetar estilos primeiro
+        editor.style.background = 'none';
+        editor.style.backgroundColor = '#ffffff';
+        editor.style.backgroundImage = 'none';
+        editor.style.padding = '3rem';
         
         // Aplicar fundo
         if (customization.backgroundType === 'paper') {
@@ -1039,13 +1160,11 @@ class EscrityApp {
             editor.style.backgroundImage = `url("${customization.backgroundImage}")`;
             editor.style.backgroundSize = 'cover';
             editor.style.backgroundPosition = 'center';
-        } else {
-            editor.style.background = 'none';
-            editor.style.backgroundImage = 'none';
+            editor.style.backgroundColor = 'transparent';
         }
         
-        // Aplicar tom da página
-        if (customization.backgroundType === 'none') {
+        // Aplicar tom da página se não for fundo customizado
+        if (customization.backgroundType !== 'custom') {
             editor.style.backgroundColor = customization.pageTone;
         }
         
@@ -1068,6 +1187,8 @@ class EscrityApp {
 
     clearSheetCustomization() {
         const editor = document.getElementById('editor');
+        if (!editor) return;
+        
         editor.style.background = 'none';
         editor.style.backgroundColor = '#ffffff';
         editor.style.backgroundImage = 'none';
@@ -1077,9 +1198,9 @@ class EscrityApp {
     saveCustomization() {
         if (!this.currentSheet) return;
         
-        const backgroundType = document.querySelector('.bg-option.active').dataset.bg;
-        const pageTone = document.querySelector('.color-tone.active').dataset.tone;
-        const marginSize = document.querySelector('.margin-option.active').dataset.margin;
+        const backgroundType = document.querySelector('.bg-option.active')?.dataset.bg || 'none';
+        const pageTone = document.querySelector('.color-tone.active')?.dataset.tone || '#ffffff';
+        const marginSize = document.querySelector('.margin-option.active')?.dataset.margin || 'normal';
         
         const customization = {
             backgroundType,
@@ -1093,7 +1214,11 @@ class EscrityApp {
         this.applySheetCustomization(customization);
         
         this.saveData();
-        document.getElementById('customizeSheetModal').classList.remove('active');
+        
+        const modal = document.getElementById('customizeSheetModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
         
         this.showNotification('Ambiente configurado', 'Sua página foi personalizada.', 'success');
     }
@@ -1110,9 +1235,11 @@ class EscrityApp {
             
             // Atualizar visualização
             const customOption = document.querySelector('.bg-option[data-bg="custom"] .bg-preview');
-            customOption.style.backgroundImage = `url("${e.target.result}")`;
-            customOption.style.backgroundSize = 'cover';
-            customOption.innerHTML = '';
+            if (customOption) {
+                customOption.style.backgroundImage = `url("${e.target.result}")`;
+                customOption.style.backgroundSize = 'cover';
+                customOption.innerHTML = '';
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -1126,6 +1253,8 @@ class EscrityApp {
         }
         
         const modal = document.getElementById('fontSettingsModal');
+        if (!modal) return;
+        
         modal.classList.add('active');
         
         // Carregar configurações atuais
@@ -1140,31 +1269,49 @@ class EscrityApp {
         });
         
         // Atualizar sliders
-        document.getElementById('fontSize').value = settings.fontSize;
-        document.getElementById('lineHeight').value = settings.lineHeight;
+        const fontSizeInput = document.getElementById('fontSize');
+        const lineHeightInput = document.getElementById('lineHeight');
+        
+        if (fontSizeInput) fontSizeInput.value = settings.fontSize;
+        if (lineHeightInput) lineHeightInput.value = settings.lineHeight;
         
         this.updateFontPreview();
     }
 
     updateFontPreview() {
         const previewArea = document.getElementById('fontPreviewArea');
-        const fontFamily = document.querySelector('.font-option.active').dataset.font;
-        const fontSize = document.getElementById('fontSize').value;
-        const lineHeight = document.getElementById('lineHeight').value;
+        const activeFont = document.querySelector('.font-option.active');
+        const fontSizeInput = document.getElementById('fontSize');
+        const lineHeightInput = document.getElementById('lineHeight');
+        
+        if (!previewArea || !activeFont || !fontSizeInput || !lineHeightInput) return;
+        
+        const fontFamily = activeFont.dataset.font;
+        const fontSize = fontSizeInput.value;
+        const lineHeight = lineHeightInput.value;
         
         previewArea.style.fontFamily = fontFamily;
         previewArea.style.fontSize = `${fontSize}px`;
         previewArea.style.lineHeight = lineHeight;
         
         // Atualizar valores exibidos
-        document.getElementById('fontSizeValue').textContent = `${fontSize}px`;
-        document.getElementById('lineHeightValue').textContent = lineHeight;
+        const fontSizeValue = document.getElementById('fontSizeValue');
+        const lineHeightValue = document.getElementById('lineHeightValue');
+        
+        if (fontSizeValue) fontSizeValue.textContent = `${fontSize}px`;
+        if (lineHeightValue) lineHeightValue.textContent = lineHeight;
     }
 
     applyFontSettings() {
-        const fontFamily = document.querySelector('.font-option.active').dataset.font;
-        const fontSize = parseInt(document.getElementById('fontSize').value);
-        const lineHeight = parseFloat(document.getElementById('lineHeight').value);
+        const activeFont = document.querySelector('.font-option.active');
+        const fontSizeInput = document.getElementById('fontSize');
+        const lineHeightInput = document.getElementById('lineHeight');
+        
+        if (!activeFont || !fontSizeInput || !lineHeightInput) return;
+        
+        const fontFamily = activeFont.dataset.font;
+        const fontSize = parseInt(fontSizeInput.value);
+        const lineHeight = parseFloat(lineHeightInput.value);
         
         this.fontSettings = {
             fontFamily,
@@ -1174,9 +1321,11 @@ class EscrityApp {
         
         // Aplicar ao editor
         const editor = document.getElementById('editor');
-        editor.style.fontFamily = fontFamily;
-        editor.style.fontSize = `${fontSize}px`;
-        editor.style.lineHeight = lineHeight;
+        if (editor) {
+            editor.style.fontFamily = fontFamily;
+            editor.style.fontSize = `${fontSize}px`;
+            editor.style.lineHeight = lineHeight;
+        }
         
         // Salvar na folha atual
         if (this.currentSheet) {
@@ -1184,7 +1333,11 @@ class EscrityApp {
             this.saveData();
         }
         
-        document.getElementById('fontSettingsModal').classList.remove('active');
+        const modal = document.getElementById('fontSettingsModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        
         this.showNotification('Escrita configurada', 'Seu estilo de escrita foi aplicado.', 'success');
     }
 
@@ -1193,7 +1346,10 @@ class EscrityApp {
     setupAudioEvents() {
         this.audio.addEventListener('timeupdate', () => this.updateProgress());
         this.audio.addEventListener('loadedmetadata', () => {
-            document.getElementById('duration').textContent = this.formatTime(this.audio.duration);
+            const durationElement = document.getElementById('duration');
+            if (durationElement) {
+                durationElement.textContent = this.formatTime(this.audio.duration);
+            }
         });
         this.audio.addEventListener('ended', () => this.playNextTrack());
         this.audio.addEventListener('play', () => this.updatePlayState(true));
@@ -1204,6 +1360,8 @@ class EscrityApp {
     }
 
     playTrack(track) {
+        if (!track || !track.url) return;
+        
         this.currentTrack = track;
         
         // Carregar a música
@@ -1211,17 +1369,22 @@ class EscrityApp {
         
         this.audio.play().then(() => {
             // Atualizar UI
-            document.getElementById('currentTrackTitle').textContent = track.title;
-            document.getElementById('currentTrackArtist').textContent = track.artist || 'Importado';
-            document.getElementById('playPause').innerHTML = '<i class="fas fa-pause"></i>';
+            const trackTitle = document.getElementById('currentTrackTitle');
+            const trackArtist = document.getElementById('currentTrackArtist');
+            const playBtn = document.getElementById('playPause');
+            const musicStatusText = document.getElementById('musicStatusText');
+            const musicIcon = document.querySelector('#musicStatus i');
+            
+            if (trackTitle) trackTitle.textContent = track.title;
+            if (trackArtist) trackArtist.textContent = track.artist || 'Importado';
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            if (musicStatusText) musicStatusText.textContent = 'Tocando';
+            if (musicIcon) musicIcon.style.color = '#9b59b6';
+            
             this.isPlaying = true;
             
             // Atualizar estado da faixa
             this.updateTrackStates();
-            
-            // Atualizar status
-            document.getElementById('musicStatusText').textContent = 'Tocando';
-            document.querySelector('#musicStatus i').style.color = '#9b59b6';
             
         }).catch(e => {
             console.error('ESCRITY: Erro ao reproduzir:', e);
@@ -1232,17 +1395,23 @@ class EscrityApp {
     updatePlayState(playing) {
         this.isPlaying = playing;
         const playBtn = document.getElementById('playPause');
+        const musicStatusText = document.getElementById('musicStatusText');
+        const musicIcon = document.querySelector('#musicStatus i');
         
         if (playing) {
-            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-            playBtn.title = 'Pausar';
-            document.getElementById('musicStatusText').textContent = 'Tocando';
-            document.querySelector('#musicStatus i').style.color = '#9b59b6';
+            if (playBtn) {
+                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                playBtn.title = 'Pausar';
+            }
+            if (musicStatusText) musicStatusText.textContent = 'Tocando';
+            if (musicIcon) musicIcon.style.color = '#9b59b6';
         } else {
-            playBtn.innerHTML = '<i class="fas fa-play"></i>';
-            playBtn.title = 'Reproduzir';
-            document.getElementById('musicStatusText').textContent = 'Pausado';
-            document.querySelector('#musicStatus i').style.color = '';
+            if (playBtn) {
+                playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                playBtn.title = 'Reproduzir';
+            }
+            if (musicStatusText) musicStatusText.textContent = 'Pausado';
+            if (musicIcon) musicIcon.style.color = '';
         }
     }
 
@@ -1288,8 +1457,11 @@ class EscrityApp {
         if (!this.audio.duration || isNaN(this.audio.duration)) return;
         
         const progress = (this.audio.currentTime / this.audio.duration) * 100;
-        document.getElementById('progressFill').style.width = `${progress}%`;
-        document.getElementById('currentTime').textContent = this.formatTime(this.audio.currentTime);
+        const progressFill = document.getElementById('progressFill');
+        const currentTime = document.getElementById('currentTime');
+        
+        if (progressFill) progressFill.style.width = `${progress}%`;
+        if (currentTime) currentTime.textContent = this.formatTime(this.audio.currentTime);
     }
 
     formatTime(seconds) {
@@ -1314,12 +1486,17 @@ class EscrityApp {
 
     updateVolume(e) {
         const volumeBar = document.getElementById('volumeBar');
+        if (!volumeBar) return;
+        
         const rect = volumeBar.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const percentage = Math.max(0, Math.min(1, x / rect.width));
         
         this.audio.volume = percentage;
-        document.getElementById('volumeFill').style.width = `${percentage * 100}%`;
+        const volumeFill = document.getElementById('volumeFill');
+        if (volumeFill) {
+            volumeFill.style.width = `${percentage * 100}%`;
+        }
         
         // Salvar preferência
         this.saveMusicSettings();
@@ -1327,6 +1504,8 @@ class EscrityApp {
 
     updateProgressBar(e) {
         const progressBar = document.getElementById('progressBar');
+        if (!progressBar) return;
+        
         const rect = progressBar.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const percentage = Math.max(0, Math.min(1, x / rect.width));
@@ -1337,6 +1516,8 @@ class EscrityApp {
     }
 
     handleMusicUpload(files) {
+        if (!files || files.length === 0) return;
+        
         Array.from(files).forEach(file => {
             if (!file.type.startsWith('audio/')) {
                 this.showNotification('Formato inválido', 'Apenas arquivos de áudio são permitidos.', 'error');
@@ -1381,7 +1562,8 @@ class EscrityApp {
                     <p class="hint">Importe suas músicas para criar atmosfera</p>
                 </div>
             `;
-            document.getElementById('trackCount').textContent = '0 músicas';
+            const trackCount = document.getElementById('trackCount');
+            if (trackCount) trackCount.textContent = '0 músicas';
             return;
         }
         
@@ -1423,7 +1605,10 @@ class EscrityApp {
         });
         
         // Atualizar contador
-        document.getElementById('trackCount').textContent = `${this.tracks.length} ${this.tracks.length === 1 ? 'música' : 'músicas'}`;
+        const trackCount = document.getElementById('trackCount');
+        if (trackCount) {
+            trackCount.textContent = `${this.tracks.length} ${this.tracks.length === 1 ? 'música' : 'músicas'}`;
+        }
     }
 
     deleteUploadedTrack(trackId) {
@@ -1472,77 +1657,100 @@ class EscrityApp {
             tracks: this.tracks,
             volume: this.audio.volume
         };
-        localStorage.setItem('escry-music', JSON.stringify(data));
+        try {
+            localStorage.setItem('escry-music', JSON.stringify(data));
+        } catch (error) {
+            console.error('ESCRITY: Erro ao salvar configurações de música:', error);
+        }
     }
 
     loadSettings() {
         // Carregar configurações de música
-        const savedMusic = localStorage.getItem('escry-music');
-        if (savedMusic) {
-            try {
+        try {
+            const savedMusic = localStorage.getItem('escry-music');
+            if (savedMusic) {
                 const data = JSON.parse(savedMusic);
                 this.tracks = data.tracks || [];
                 this.audio.volume = data.volume || 0.5;
                 
                 // Atualizar volume
-                document.getElementById('volumeFill').style.width = `${this.audio.volume * 100}%`;
+                const volumeFill = document.getElementById('volumeFill');
+                if (volumeFill) {
+                    volumeFill.style.width = `${this.audio.volume * 100}%`;
+                }
                 
                 // Renderizar trilhas importadas
                 this.renderUploadedTracks();
-                
-            } catch (e) {
-                console.error('ESCRITY: Erro ao carregar configurações de música:', e);
             }
+        } catch (e) {
+            console.error('ESCRITY: Erro ao carregar configurações de música:', e);
         }
         
         // Carregar outras configurações
-        const savedSettings = localStorage.getItem('escry-settings');
-        if (savedSettings) {
-            try {
+        try {
+            const savedSettings = localStorage.getItem('escry-settings');
+            if (savedSettings) {
                 const settings = JSON.parse(savedSettings);
                 this.currentTextColor = settings.textColor || '#2c3e50';
                 
                 // Aplicar cor do texto
-                document.getElementById('textColorPicker').value = this.currentTextColor;
-                document.getElementById('editor').style.color = this.currentTextColor;
+                const textColorPicker = document.getElementById('textColorPicker');
+                const editor = document.getElementById('editor');
                 
-            } catch (e) {
-                console.error('ESCRITY: Erro ao carregar configurações:', e);
+                if (textColorPicker) textColorPicker.value = this.currentTextColor;
+                if (editor) editor.style.color = this.currentTextColor;
             }
+        } catch (e) {
+            console.error('ESCRITY: Erro ao carregar configurações:', e);
         }
     }
 
     // ========== BACKUP E RESTAURAÇÃO ==========
 
     showBackupModal() {
-        document.getElementById('backupModal').classList.add('active');
+        const modal = document.getElementById('backupModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
     }
 
     showRestoreModal() {
-        document.getElementById('restoreModal').classList.add('active');
-        this.loadBackupsList();
+        const modal = document.getElementById('restoreModal');
+        if (modal) {
+            modal.classList.add('active');
+            this.loadBackupsList();
+        }
     }
 
     createManualBackup() {
-        const backupData = {
-            id: `backup-manual-${Date.now()}`,
-            app: 'ESCRITY',
-            version: '3.0',
-            date: new Date().toISOString(),
-            notebooks: this.notebooks,
-            settings: {
-                fontSettings: this.fontSettings,
-                textColor: this.currentTextColor
-            }
-        };
-        
-        localStorage.setItem(`escry-backup-${backupData.id}`, JSON.stringify(backupData));
-        
-        this.showNotification('Backup criado', 'Sua cópia de segurança foi salva com sucesso.', 'success');
+        try {
+            const backupData = {
+                id: `backup-manual-${Date.now()}`,
+                app: 'ESCRITY',
+                version: '3.0',
+                date: new Date().toISOString(),
+                notebooks: this.notebooks,
+                settings: {
+                    fontSettings: this.fontSettings,
+                    textColor: this.currentTextColor
+                }
+            };
+            
+            localStorage.setItem(`escry-backup-${backupData.id}`, JSON.stringify(backupData));
+            
+            this.showNotification('Backup criado', 'Sua cópia de segurança foi salva com sucesso.', 'success');
+            return true;
+        } catch (error) {
+            console.error('ESCRITY: Erro ao criar backup manual:', error);
+            this.showNotification('Erro', 'Não foi possível criar o backup.', 'error');
+            return false;
+        }
     }
 
     loadBackupsList() {
         const container = document.getElementById('backupsList');
+        if (!container) return;
+        
         const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('escry-backup-'));
         
         if (backupKeys.length === 0) {
@@ -1552,7 +1760,8 @@ class EscrityApp {
                     <p>Nenhum backup encontrado</p>
                 </div>
             `;
-            document.getElementById('confirmRestoreBtn').disabled = true;
+            const confirmBtn = document.getElementById('confirmRestoreBtn');
+            if (confirmBtn) confirmBtn.disabled = true;
             return;
         }
         
@@ -1613,7 +1822,8 @@ class EscrityApp {
             }
         });
         
-        document.getElementById('confirmRestoreBtn').disabled = true;
+        const confirmBtn = document.getElementById('confirmRestoreBtn');
+        if (confirmBtn) confirmBtn.disabled = true;
     }
 
     selectBackupForRestoration(key) {
@@ -1624,7 +1834,8 @@ class EscrityApp {
         const selectedItem = document.querySelector(`.backup-item[data-key="${key}"]`);
         if (selectedItem) {
             selectedItem.classList.add('selected');
-            document.getElementById('confirmRestoreBtn').disabled = false;
+            const confirmBtn = document.getElementById('confirmRestoreBtn');
+            if (confirmBtn) confirmBtn.disabled = false;
             this.selectedBackupKey = key;
         }
     }
@@ -1653,7 +1864,9 @@ class EscrityApp {
                             this.clearEditor();
                         }
                         
-                        document.getElementById('restoreModal').classList.remove('active');
+                        const modal = document.getElementById('restoreModal');
+                        if (modal) modal.classList.remove('active');
+                        
                         this.showNotification('Backup restaurado', 'Seus dados foram recuperados com sucesso.', 'success');
                     }
                 } catch (e) {
@@ -1684,7 +1897,10 @@ class EscrityApp {
             return;
         }
         
-        document.getElementById('exportModal').classList.add('active');
+        const modal = document.getElementById('exportModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
     }
 
     exportNotebook(format) {
@@ -1692,7 +1908,7 @@ class EscrityApp {
         
         const notebook = this.currentNotebook;
         const date = new Date().toLocaleDateString('pt-BR');
-        const includeMetadata = document.getElementById('includeMetadata').checked;
+        const includeMetadata = document.getElementById('includeMetadata')?.checked || false;
         
         let exportedContent = '';
         let filename = `${notebook.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}`;
@@ -1716,18 +1932,25 @@ class EscrityApp {
         }
         
         // Criar e baixar arquivo
-        const blob = new Blob([exportedContent], { type: this.getMimeType(format) });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        document.getElementById('exportModal').classList.remove('active');
-        this.showNotification('Exportação concluída', `"${notebook.name}" foi exportado com sucesso.`, 'success');
+        try {
+            const blob = new Blob([exportedContent], { type: this.getMimeType(format) });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            const modal = document.getElementById('exportModal');
+            if (modal) modal.classList.remove('active');
+            
+            this.showNotification('Exportação concluída', `"${notebook.name}" foi exportado com sucesso.`, 'success');
+        } catch (error) {
+            console.error('ESCRITY: Erro ao exportar:', error);
+            this.showNotification('Erro', 'Não foi possível exportar o caderno.', 'error');
+        }
     }
 
     exportNotebookToTxt(notebook, includeMetadata) {
@@ -1943,6 +2166,8 @@ class EscrityApp {
         const notificationTitle = document.getElementById('notificationTitle');
         const notificationText = document.getElementById('notificationText');
         
+        if (!notification || !notificationTitle || !notificationText) return;
+        
         notificationTitle.textContent = title;
         notificationText.textContent = message;
         notification.className = `notification ${type}`;
@@ -1962,17 +2187,26 @@ class EscrityApp {
         const modal = document.getElementById('confirmModal');
         const messageEl = document.getElementById('confirmMessage');
         
+        if (!modal || !messageEl) return;
+        
         messageEl.textContent = message;
         modal.classList.add('active');
         
-        document.getElementById('confirmActionBtn').onclick = () => {
-            modal.classList.remove('active');
-            if (callback) callback();
-        };
+        const confirmBtn = document.getElementById('confirmActionBtn');
+        const cancelBtn = document.getElementById('cancelConfirmBtn');
         
-        document.getElementById('cancelConfirmBtn').onclick = () => {
-            modal.classList.remove('active');
-        };
+        if (confirmBtn) {
+            confirmBtn.onclick = () => {
+                modal.classList.remove('active');
+                if (callback) callback();
+            };
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.onclick = () => {
+                modal.classList.remove('active');
+            };
+        }
     }
 
     formatDate(dateString, short = false) {
@@ -2018,12 +2252,15 @@ class EscrityApp {
     }
 
     escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
     moveCursorToEnd(element) {
+        if (!element) return;
+        
         const range = document.createRange();
         const selection = window.getSelection();
         range.selectNodeContents(element);
@@ -2038,35 +2275,62 @@ class EscrityApp {
         console.log('ESCRITY: Configurando eventos...');
         
         // ===== APP =====
-        document.getElementById('clearDataBtn').onclick = () => this.clearLocalData();
+        const clearDataBtn = document.getElementById('clearDataBtn');
+        if (clearDataBtn) {
+            clearDataBtn.onclick = () => this.clearLocalData();
+        }
         
         // ===== CADERNOS =====
-        document.getElementById('newNotebook').onclick = () => {
-            document.getElementById('notebookModal').classList.add('active');
-            document.getElementById('notebookName').focus();
-        };
+        const newNotebookBtn = document.getElementById('newNotebook');
+        if (newNotebookBtn) {
+            newNotebookBtn.onclick = () => {
+                const modal = document.getElementById('notebookModal');
+                const notebookNameInput = document.getElementById('notebookName');
+                if (modal) modal.classList.add('active');
+                if (notebookNameInput) {
+                    notebookNameInput.focus();
+                    notebookNameInput.value = '';
+                }
+            };
+        }
 
-        document.getElementById('createNotebookBtn').onclick = () => {
-            const name = document.getElementById('notebookName').value.trim();
-            if (name) {
-                const color = document.querySelector('.color-option.active').dataset.color;
-                this.createNotebook(name, color);
-                document.getElementById('notebookModal').classList.remove('active');
-                document.getElementById('notebookName').value = '';
-            } else {
-                this.showNotification('Nome necessário', 'Digite um nome para o caderno.', 'error');
-            }
-        };
+        const createNotebookBtn = document.getElementById('createNotebookBtn');
+        if (createNotebookBtn) {
+            createNotebookBtn.onclick = () => {
+                const notebookNameInput = document.getElementById('notebookName');
+                const modal = document.getElementById('notebookModal');
+                
+                if (notebookNameInput) {
+                    const name = notebookNameInput.value.trim();
+                    if (name) {
+                        const color = document.querySelector('.color-option.active')?.dataset.color || '#1a1a2e';
+                        this.createNotebook(name, color);
+                        if (modal) modal.classList.remove('active');
+                        notebookNameInput.value = '';
+                    } else {
+                        this.showNotification('Nome necessário', 'Digite um nome para o caderno.', 'error');
+                    }
+                }
+            };
+        }
 
-        document.getElementById('cancelNotebookBtn').onclick = () => {
-            document.getElementById('notebookModal').classList.remove('active');
-        };
+        const cancelNotebookBtn = document.getElementById('cancelNotebookBtn');
+        if (cancelNotebookBtn) {
+            cancelNotebookBtn.onclick = () => {
+                const modal = document.getElementById('notebookModal');
+                if (modal) modal.classList.remove('active');
+            };
+        }
 
-        document.getElementById('notebookName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('createNotebookBtn').click();
-            }
-        });
+        const notebookNameInput = document.getElementById('notebookName');
+        if (notebookNameInput) {
+            notebookNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const createBtn = document.getElementById('createNotebookBtn');
+                    if (createBtn) createBtn.click();
+                }
+            });
+        }
 
         // Opções de cor
         document.querySelectorAll('.color-option').forEach(option => {
@@ -2079,69 +2343,156 @@ class EscrityApp {
         });
 
         // ===== FOLHAS =====
-        document.getElementById('newSheet').onclick = () => {
-            if (!this.currentNotebook) {
-                this.showNotification('Selecione um caderno', 'Escolha um caderno primeiro.', 'error');
-                return;
-            }
-            
-            document.getElementById('sheetModal').classList.add('active');
-            document.getElementById('sheetName').focus();
-        };
+        const newSheetBtn = document.getElementById('newSheet');
+        if (newSheetBtn) {
+            newSheetBtn.onclick = () => {
+                if (!this.currentNotebook) {
+                    this.showNotification('Selecione um caderno', 'Escolha um caderno primeiro.', 'error');
+                    return;
+                }
+                
+                const modal = document.getElementById('sheetModal');
+                const sheetNameInput = document.getElementById('sheetName');
+                if (modal) modal.classList.add('active');
+                if (sheetNameInput) {
+                    sheetNameInput.focus();
+                    sheetNameInput.value = '';
+                }
+            };
+        }
 
-        document.getElementById('createSheetBtn').onclick = () => {
-            const name = document.getElementById('sheetName').value.trim();
-            if (name) {
-                const template = document.getElementById('sheetTemplate').value;
-                this.addSheet(name, template);
-                document.getElementById('sheetModal').classList.remove('active');
-                document.getElementById('sheetName').value = '';
-            } else {
-                this.showNotification('Título necessário', 'Digite um título para a folha.', 'error');
-            }
-        };
+        const mobileNewSheetBtn = document.getElementById('mobileNewSheetBtn');
+        if (mobileNewSheetBtn) {
+            mobileNewSheetBtn.onclick = () => {
+                if (!this.currentNotebook) {
+                    this.showNotification('Selecione um caderno', 'Escolha um caderno primeiro.', 'error');
+                    return;
+                }
+                
+                const modal = document.getElementById('sheetModal');
+                const sheetNameInput = document.getElementById('sheetName');
+                if (modal) modal.classList.add('active');
+                if (sheetNameInput) {
+                    sheetNameInput.focus();
+                    sheetNameInput.value = '';
+                }
+            };
+        }
 
-        document.getElementById('cancelSheetBtn').onclick = () => {
-            document.getElementById('sheetModal').classList.remove('active');
-        };
+        const createSheetBtn = document.getElementById('createSheetBtn');
+        if (createSheetBtn) {
+            createSheetBtn.onclick = () => {
+                const sheetNameInput = document.getElementById('sheetName');
+                const sheetTemplate = document.getElementById('sheetTemplate');
+                const modal = document.getElementById('sheetModal');
+                
+                if (sheetNameInput) {
+                    const name = sheetNameInput.value.trim();
+                    if (name) {
+                        const template = sheetTemplate ? sheetTemplate.value : 'blank';
+                        this.addSheet(name, template);
+                        if (modal) modal.classList.remove('active');
+                        sheetNameInput.value = '';
+                    } else {
+                        this.showNotification('Título necessário', 'Digite um título para a folha.', 'error');
+                    }
+                }
+            };
+        }
 
-        document.getElementById('sheetName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('createSheetBtn').click();
-            }
-        });
+        const cancelSheetBtn = document.getElementById('cancelSheetBtn');
+        if (cancelSheetBtn) {
+            cancelSheetBtn.onclick = () => {
+                const modal = document.getElementById('sheetModal');
+                if (modal) modal.classList.remove('active');
+            };
+        }
+
+        const sheetNameInput = document.getElementById('sheetName');
+        if (sheetNameInput) {
+            sheetNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const createBtn = document.getElementById('createSheetBtn');
+                    if (createBtn) createBtn.click();
+                }
+            });
+        }
 
         // ===== EDITOR =====
-        document.getElementById('saveBtn').onclick = () => this.saveContent();
-        document.getElementById('exportBtn').onclick = () => this.showExportModal();
-        document.getElementById('deleteSheetBtn').onclick = () => {
-            if (this.currentSheet) {
-                this.deleteSheet(this.currentSheet.id);
-            }
-        };
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.onclick = () => this.saveContent();
+        }
+
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.onclick = () => this.showExportModal();
+        }
+
+        const deleteSheetBtn = document.getElementById('deleteSheetBtn');
+        if (deleteSheetBtn) {
+            deleteSheetBtn.onclick = () => {
+                if (this.currentSheet) {
+                    this.deleteSheet(this.currentSheet.id);
+                }
+            };
+        }
 
         // Ferramentas de formatação
-        document.getElementById('boldBtn').onclick = () => this.applyFormatting('bold');
-        document.getElementById('italicBtn').onclick = () => this.applyFormatting('italic');
-        document.getElementById('underlineBtn').onclick = () => this.applyFormatting('underline');
-        document.getElementById('highlightBtn').onclick = () => this.applyFormatting('hiliteColor', '#f1c40f');
-        document.getElementById('listUlBtn').onclick = () => this.applyFormatting('insertUnorderedList');
-        document.getElementById('imageBtn').onclick = () => this.insertImage();
-        document.getElementById('quoteBtn').onclick = () => this.insertQuote();
-        document.getElementById('dividerBtn').onclick = () => this.insertDivider();
+        const boldBtn = document.getElementById('boldBtn');
+        if (boldBtn) boldBtn.onclick = () => this.applyFormatting('bold');
+        
+        const italicBtn = document.getElementById('italicBtn');
+        if (italicBtn) italicBtn.onclick = () => this.applyFormatting('italic');
+        
+        const underlineBtn = document.getElementById('underlineBtn');
+        if (underlineBtn) underlineBtn.onclick = () => this.applyFormatting('underline');
+        
+        const highlightBtn = document.getElementById('highlightBtn');
+        if (highlightBtn) highlightBtn.onclick = () => this.applyFormatting('hiliteColor', '#f1c40f');
+        
+        const listBtn = document.getElementById('listUlBtn');
+        if (listBtn) listBtn.onclick = () => this.applyFormatting('insertUnorderedList');
+        
+        const imageBtn = document.getElementById('imageBtn');
+        if (imageBtn) imageBtn.onclick = () => this.insertImage();
+        
+        const quoteBtn = document.getElementById('quoteBtn');
+        if (quoteBtn) quoteBtn.onclick = () => this.insertQuote();
+        
+        const dividerBtn = document.getElementById('dividerBtn');
+        if (dividerBtn) dividerBtn.onclick = () => this.insertDivider();
 
         // Cor do texto
-        document.getElementById('textColorPicker').onchange = () => this.changeTextColor();
+        const textColorPicker = document.getElementById('textColorPicker');
+        if (textColorPicker) {
+            textColorPicker.onchange = () => this.changeTextColor();
+        }
 
         // ===== PERSONALIZAÇÃO =====
-        document.getElementById('customizeSheetBtn').onclick = () => this.showCustomizeSheetModal();
-        document.getElementById('fontSettingsBtn').onclick = () => this.showFontSettingsModal();
+        const customizeBtn = document.getElementById('customizeSheetBtn');
+        if (customizeBtn) {
+            customizeBtn.onclick = () => this.showCustomizeSheetModal();
+        }
+
+        const fontSettingsBtn = document.getElementById('fontSettingsBtn');
+        if (fontSettingsBtn) {
+            fontSettingsBtn.onclick = () => this.showFontSettingsModal();
+        }
 
         // Aplicar personalização
-        document.getElementById('applyCustomizeBtn').onclick = () => this.saveCustomization();
-        document.getElementById('cancelCustomizeBtn').onclick = () => {
-            document.getElementById('customizeSheetModal').classList.remove('active');
-        };
+        const applyCustomizeBtn = document.getElementById('applyCustomizeBtn');
+        if (applyCustomizeBtn) {
+            applyCustomizeBtn.onclick = () => this.saveCustomization();
+        }
+
+        const cancelCustomizeBtn = document.getElementById('cancelCustomizeBtn');
+        if (cancelCustomizeBtn) {
+            cancelCustomizeBtn.onclick = () => {
+                const modal = document.getElementById('customizeSheetModal');
+                if (modal) modal.classList.remove('active');
+            };
+        }
 
         // Opções de fundo
         document.querySelectorAll('.bg-option').forEach(option => {
@@ -2152,15 +2503,19 @@ class EscrityApp {
                 option.classList.add('active');
                 
                 if (option.dataset.bg === 'custom') {
-                    document.getElementById('bgImageUpload').click();
+                    const bgUpload = document.getElementById('bgImageUpload');
+                    if (bgUpload) bgUpload.click();
                 }
             };
         });
 
         // Upload de imagem de fundo
-        document.getElementById('bgImageUpload').onchange = (e) => {
-            this.handleBackgroundUpload(e.target.files[0]);
-        };
+        const bgImageUpload = document.getElementById('bgImageUpload');
+        if (bgImageUpload) {
+            bgImageUpload.onchange = (e) => {
+                this.handleBackgroundUpload(e.target.files[0]);
+            };
+        }
 
         // Tons de página
         document.querySelectorAll('.color-tone').forEach(tone => {
@@ -2183,10 +2538,18 @@ class EscrityApp {
         });
 
         // ===== CONFIGURAÇÕES DE FONTE =====
-        document.getElementById('applyFontBtn').onclick = () => this.applyFontSettings();
-        document.getElementById('cancelFontBtn').onclick = () => {
-            document.getElementById('fontSettingsModal').classList.remove('active');
-        };
+        const applyFontBtn = document.getElementById('applyFontBtn');
+        if (applyFontBtn) {
+            applyFontBtn.onclick = () => this.applyFontSettings();
+        }
+
+        const cancelFontBtn = document.getElementById('cancelFontBtn');
+        if (cancelFontBtn) {
+            cancelFontBtn.onclick = () => {
+                const modal = document.getElementById('fontSettingsModal');
+                if (modal) modal.classList.remove('active');
+            };
+        }
 
         // Opções de fonte
         document.querySelectorAll('.font-option').forEach(option => {
@@ -2200,63 +2563,106 @@ class EscrityApp {
         });
 
         // Sliders
-        document.getElementById('fontSize').oninput = () => this.updateFontPreview();
-        document.getElementById('lineHeight').oninput = () => this.updateFontPreview();
+        const fontSizeSlider = document.getElementById('fontSize');
+        if (fontSizeSlider) {
+            fontSizeSlider.oninput = () => this.updateFontPreview();
+        }
+
+        const lineHeightSlider = document.getElementById('lineHeight');
+        if (lineHeightSlider) {
+            lineHeightSlider.oninput = () => this.updateFontPreview();
+        }
 
         // ===== MÚSICA =====
-        document.getElementById('toggleMusic').onclick = () => this.toggleMusicSidebar();
-        document.getElementById('closeMusic').onclick = () => this.toggleMusicSidebar();
+        const toggleMusicBtn = document.getElementById('toggleMusic');
+        if (toggleMusicBtn) {
+            toggleMusicBtn.onclick = () => this.toggleMusicSidebar();
+        }
+
+        const closeMusicBtn = document.getElementById('closeMusic');
+        if (closeMusicBtn) {
+            closeMusicBtn.onclick = () => this.toggleMusicSidebar();
+        }
 
         // Player
-        document.getElementById('playPause').onclick = () => this.playPause();
-        document.getElementById('nextTrack').onclick = () => this.playNextTrack();
-        document.getElementById('prevTrack').onclick = () => this.playPrevTrack();
+        const playPauseBtn = document.getElementById('playPause');
+        if (playPauseBtn) {
+            playPauseBtn.onclick = () => this.playPause();
+        }
+
+        const nextTrackBtn = document.getElementById('nextTrack');
+        if (nextTrackBtn) {
+            nextTrackBtn.onclick = () => this.playNextTrack();
+        }
+
+        const prevTrackBtn = document.getElementById('prevTrack');
+        if (prevTrackBtn) {
+            prevTrackBtn.onclick = () => this.playPrevTrack();
+        }
 
         // Barras de progresso
         const progressBar = document.getElementById('progressBar');
         const volumeBar = document.getElementById('volumeBar');
         
-        progressBar.onclick = (e) => this.updateProgressBar(e);
-        volumeBar.onclick = (e) => this.updateVolume(e);
+        if (progressBar) {
+            progressBar.onclick = (e) => this.updateProgressBar(e);
+        }
+        
+        if (volumeBar) {
+            volumeBar.onclick = (e) => this.updateVolume(e);
+        }
 
         // Upload de música
         const uploadArea = document.getElementById('uploadArea');
         const audioUpload = document.getElementById('audioUpload');
         
-        uploadArea.onclick = () => audioUpload.click();
-        uploadArea.ondragover = (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'var(--accent-color)';
-            uploadArea.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
-        };
-        uploadArea.ondragleave = () => {
-            uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
-            uploadArea.style.backgroundColor = 'rgba(255,255,255,0.05)';
-        };
-        uploadArea.ondrop = (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
-            uploadArea.style.backgroundColor = 'rgba(255,255,255,0.05)';
-            this.handleMusicUpload(e.dataTransfer.files);
-        };
-        
-        audioUpload.onchange = (e) => {
-            this.handleMusicUpload(e.target.files);
-            e.target.value = '';
-        };
+        if (uploadArea && audioUpload) {
+            uploadArea.onclick = () => audioUpload.click();
+            uploadArea.ondragover = (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = 'var(--accent-color)';
+                uploadArea.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+            };
+            uploadArea.ondragleave = () => {
+                uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
+                uploadArea.style.backgroundColor = 'rgba(255,255,255,0.05)';
+            };
+            uploadArea.ondrop = (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
+                uploadArea.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                this.handleMusicUpload(e.dataTransfer.files);
+            };
+            
+            audioUpload.onchange = (e) => {
+                this.handleMusicUpload(e.target.files);
+                e.target.value = '';
+            };
+        }
 
         // Limpar todas as músicas
-        document.getElementById('deleteAllTracks').onclick = () => this.deleteAllTracks();
+        const deleteAllTracksBtn = document.getElementById('deleteAllTracks');
+        if (deleteAllTracksBtn) {
+            deleteAllTracksBtn.onclick = () => this.deleteAllTracks();
+        }
 
         // ===== BACKUP =====
-        document.getElementById('backupBtn').onclick = () => this.showBackupModal();
-        document.getElementById('restoreBtn').onclick = () => this.showRestoreModal();
+        const backupBtn = document.getElementById('backupBtn');
+        if (backupBtn) {
+            backupBtn.onclick = () => this.showBackupModal();
+        }
+
+        const restoreBtn = document.getElementById('restoreBtn');
+        if (restoreBtn) {
+            restoreBtn.onclick = () => this.showRestoreModal();
+        }
         
         // Opções de backup
         document.querySelectorAll('.backup-option').forEach(option => {
             option.onclick = () => {
                 const action = option.dataset.action;
-                document.getElementById('backupModal').classList.remove('active');
+                const modal = document.getElementById('backupModal');
+                if (modal) modal.classList.remove('active');
                 
                 switch(action) {
                     case 'create':
@@ -2272,39 +2678,63 @@ class EscrityApp {
             };
         });
 
-        document.getElementById('cancelBackupBtn').onclick = () => {
-            document.getElementById('backupModal').classList.remove('active');
-        };
+        const cancelBackupBtn = document.getElementById('cancelBackupBtn');
+        if (cancelBackupBtn) {
+            cancelBackupBtn.onclick = () => {
+                const modal = document.getElementById('backupModal');
+                if (modal) modal.classList.remove('active');
+            };
+        }
 
         // Restauração
-        document.getElementById('confirmRestoreBtn').onclick = () => this.restoreBackup();
-        document.getElementById('cancelRestoreBtn').onclick = () => {
-            document.getElementById('restoreModal').classList.remove('active');
-            this.selectedBackupKey = null;
-        };
+        const confirmRestoreBtn = document.getElementById('confirmRestoreBtn');
+        if (confirmRestoreBtn) {
+            confirmRestoreBtn.onclick = () => this.restoreBackup();
+        }
+
+        const cancelRestoreBtn = document.getElementById('cancelRestoreBtn');
+        if (cancelRestoreBtn) {
+            cancelRestoreBtn.onclick = () => {
+                const modal = document.getElementById('restoreModal');
+                if (modal) modal.classList.remove('active');
+                this.selectedBackupKey = null;
+            };
+        }
 
         // ===== CAPA =====
-        document.getElementById('changeCoverBtn').onclick = () => {
-            document.getElementById('coverModal').classList.add('active');
-        };
+        const changeCoverBtn = document.getElementById('changeCoverBtn');
+        if (changeCoverBtn) {
+            changeCoverBtn.onclick = () => {
+                const modal = document.getElementById('coverModal');
+                if (modal) modal.classList.add('active');
+            };
+        }
 
-        document.getElementById('applyCoverBtn').onclick = () => {
-            const coverType = document.querySelector('.cover-preset.active').dataset.cover;
-            
-            if (coverType === 'custom' && this.currentNotebook?.customCover) {
-                this.updateCover('custom', this.currentNotebook.customCover);
-                this.showNotification('Capa aplicada', 'Sua capa personalizada foi aplicada.', 'success');
-            } else {
-                this.updateCover(coverType, null);
-                this.showNotification('Capa aplicada', 'A capa foi alterada.', 'success');
-            }
-            
-            document.getElementById('coverModal').classList.remove('active');
-        };
+        const applyCoverBtn = document.getElementById('applyCoverBtn');
+        if (applyCoverBtn) {
+            applyCoverBtn.onclick = () => {
+                const coverType = document.querySelector('.cover-preset.active')?.dataset.cover || 'default';
+                
+                if (coverType === 'custom' && this.currentNotebook?.customCover) {
+                    this.updateCover('custom', this.currentNotebook.customCover);
+                    this.showNotification('Capa aplicada', 'Sua capa personalizada foi aplicada.', 'success');
+                } else {
+                    this.updateCover(coverType, null);
+                    this.showNotification('Capa aplicada', 'A capa foi alterada.', 'success');
+                }
+                
+                const modal = document.getElementById('coverModal');
+                if (modal) modal.classList.remove('active');
+            };
+        }
 
-        document.getElementById('cancelCoverBtn').onclick = () => {
-            document.getElementById('coverModal').classList.remove('active');
-        };
+        const cancelCoverBtn = document.getElementById('cancelCoverBtn');
+        if (cancelCoverBtn) {
+            cancelCoverBtn.onclick = () => {
+                const modal = document.getElementById('coverModal');
+                if (modal) modal.classList.remove('active');
+            };
+        }
 
         // Opções de capa
         document.querySelectorAll('.cover-preset').forEach(preset => {
@@ -2314,42 +2744,56 @@ class EscrityApp {
                 });
                 preset.classList.add('active');
                 
+                const customCoverUpload = document.getElementById('customCoverUpload');
+                const coverFileInput = document.getElementById('coverFile');
+                
                 if (preset.dataset.cover === 'custom') {
-                    document.getElementById('customCoverUpload').style.display = 'block';
-                    document.getElementById('coverFile').click();
+                    if (customCoverUpload) customCoverUpload.style.display = 'block';
+                    if (coverFileInput) coverFileInput.click();
                 } else {
-                    document.getElementById('customCoverUpload').style.display = 'none';
+                    if (customCoverUpload) customCoverUpload.style.display = 'none';
                 }
             };
         });
 
         // Upload de capa personalizada
-        document.getElementById('coverFile').onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file || !file.type.startsWith('image/')) {
-                this.showNotification('Formato inválido', 'Selecione apenas imagens.', 'error');
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                if (this.currentNotebook) {
-                    this.currentNotebook.customCover = e.target.result;
-                    this.updateCover('custom', e.target.result);
+        const coverFileInput = document.getElementById('coverFile');
+        if (coverFileInput) {
+            coverFileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file || !file.type.startsWith('image/')) {
+                    this.showNotification('Formato inválido', 'Selecione apenas imagens.', 'error');
+                    return;
                 }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (this.currentNotebook) {
+                        this.currentNotebook.customCover = e.target.result;
+                        this.updateCover('custom', e.target.result);
+                    }
+                };
+                reader.readAsDataURL(file);
             };
-            reader.readAsDataURL(file);
-        };
+        }
 
         // ===== EXPORTAÇÃO =====
-        document.getElementById('cancelExportBtn').onclick = () => {
-            document.getElementById('exportModal').classList.remove('active');
-        };
+        const cancelExportBtn = document.getElementById('cancelExportBtn');
+        if (cancelExportBtn) {
+            cancelExportBtn.onclick = () => {
+                const modal = document.getElementById('exportModal');
+                if (modal) modal.classList.remove('active');
+            };
+        }
 
-        document.getElementById('confirmExportBtn').onclick = () => {
-            const format = document.querySelector('.export-option.active').dataset.format;
-            this.exportNotebook(format);
-        };
+        const confirmExportBtn = document.getElementById('confirmExportBtn');
+        if (confirmExportBtn) {
+            confirmExportBtn.onclick = () => {
+                const activeOption = document.querySelector('.export-option.active');
+                const format = activeOption ? activeOption.dataset.format : 'txt';
+                this.exportNotebook(format);
+            };
+        }
 
         document.querySelectorAll('.export-option').forEach(option => {
             option.onclick = () => {
@@ -2365,15 +2809,17 @@ class EscrityApp {
         const sidebar = document.getElementById('mainSidebar');
         const mobileOverlay = document.getElementById('mobileOverlay');
         
-        mobileMenuBtn.onclick = () => {
-            sidebar.classList.toggle('active');
-            mobileOverlay.classList.toggle('active');
-        };
+        if (mobileMenuBtn && sidebar && mobileOverlay) {
+            mobileMenuBtn.onclick = () => {
+                sidebar.classList.toggle('active');
+                mobileOverlay.classList.toggle('active');
+            };
 
-        mobileOverlay.onclick = () => {
-            sidebar.classList.remove('active');
-            mobileOverlay.classList.remove('active');
-        };
+            mobileOverlay.onclick = () => {
+                sidebar.classList.remove('active');
+                mobileOverlay.classList.remove('active');
+            };
+        }
 
         // Swipe para fechar sidebar
         let touchStartX = 0;
@@ -2382,14 +2828,14 @@ class EscrityApp {
         }, { passive: true });
         
         document.addEventListener('touchmove', (e) => {
-            if (!sidebar.classList.contains('active')) return;
+            if (!sidebar || !sidebar.classList.contains('active')) return;
             
             const touchX = e.touches[0].clientX;
             const diffX = touchX - touchStartX;
             
             if (diffX > 50) {
                 sidebar.classList.remove('active');
-                mobileOverlay.classList.remove('active');
+                if (mobileOverlay) mobileOverlay.classList.remove('active');
             }
         }, { passive: true });
 
@@ -2447,9 +2893,9 @@ class EscrityApp {
             if (e.key === 'Escape') {
                 this.closeAllModals();
                 
-                if (window.innerWidth <= 992) {
+                if (window.innerWidth <= 992 && sidebar) {
                     sidebar.classList.remove('active');
-                    mobileOverlay.classList.remove('active');
+                    if (mobileOverlay) mobileOverlay.classList.remove('active');
                 }
                 
                 if (this.isMusicVisible) {
@@ -2468,25 +2914,32 @@ class EscrityApp {
         });
 
         // ===== INSTALAÇÃO PWA =====
-        document.getElementById('installBtn').onclick = () => {
-            if (this.deferredPrompt) {
-                this.installApp();
-            } else {
-                this.showInstallInstructions();
-            }
-        };
+        const installBtn = document.getElementById('installBtn');
+        if (installBtn) {
+            installBtn.onclick = () => {
+                if (this.deferredPrompt) {
+                    this.installApp();
+                } else {
+                    this.showInstallInstructions();
+                }
+            };
+        }
     }
 
     toggleMusicSidebar() {
         const musicSidebar = document.getElementById('musicSidebar');
+        const toggleMusicBtn = document.getElementById('toggleMusic');
+        
+        if (!musicSidebar || !toggleMusicBtn) return;
+        
         this.isMusicVisible = !this.isMusicVisible;
         
         if (this.isMusicVisible) {
             musicSidebar.classList.add('active');
-            document.getElementById('toggleMusic').innerHTML = '<i class="fas fa-times"></i> Fechar';
+            toggleMusicBtn.innerHTML = '<i class="fas fa-times"></i> Fechar';
         } else {
             musicSidebar.classList.remove('active');
-            document.getElementById('toggleMusic').innerHTML = '<i class="fas fa-headphones"></i> Atmosfera';
+            toggleMusicBtn.innerHTML = '<i class="fas fa-headphones"></i> Atmosfera';
         }
     }
 
@@ -2505,17 +2958,12 @@ class EscrityApp {
         this.currentNotebook.customCover = customCover;
         
         const coverImg = document.getElementById('currentCover');
+        if (!coverImg) return;
         
         if (coverType === 'custom' && customCover) {
             coverImg.src = customCover;
-        } else if (coverType === 'leather') {
-            coverImg.src = '';
-            coverImg.style.background = '#8B4513';
-        } else if (coverType === 'fabric') {
-            coverImg.src = '';
-            coverImg.style.background = '#2c3e50';
-            coverImg.style.backgroundImage = 
-                'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)';
+            coverImg.style.background = 'none';
+            coverImg.style.backgroundImage = 'none';
         } else {
             coverImg.src = 'assets/capas/default.jpg';
             coverImg.style.background = 'none';
@@ -2538,6 +2986,7 @@ class EscrityApp {
 
     setupInstallPrompt() {
         const installBtn = document.getElementById('installBtn');
+        if (!installBtn) return;
         
         // Verificar se já está instalado
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
@@ -2610,15 +3059,32 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('ESCRITY: Carregando espaço de criação...');
     
     setTimeout(() => {
-        const app = new EscrityApp();
-        window.escryApp = app;
-        
-        // Verificar Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('ESCRITY: Nova versão disponível');
-                window.location.reload();
-            });
+        try {
+            const app = new EscrityApp();
+            window.escryApp = app;
+            
+            // Verificar Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    console.log('ESCRITY: Nova versão disponível');
+                    window.location.reload();
+                });
+            }
+        } catch (error) {
+            console.error('ESCRITY: Erro crítico ao inicializar:', error);
+            const loadingScreen = document.getElementById('loadingScreen');
+            if (loadingScreen) {
+                loadingScreen.innerHTML = `
+                    <div class="loading-content">
+                        <h2 style="color: #e74c3c;">ERRO</h2>
+                        <p>Não foi possível carregar o ESCRITY</p>
+                        <p style="font-size: 0.9rem; margin-top: 1rem;">Por favor, recarregue a página</p>
+                        <button onclick="window.location.reload()" style="margin-top: 2rem; padding: 0.75rem 1.5rem; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            Recarregar
+                        </button>
+                    </div>
+                `;
+            }
         }
     }, 100);
 });
