@@ -1,7 +1,6 @@
-// Service Worker para ESCRITY (Versão 3.0)
-const CACHE_VERSION = 'escry-v3.0';
-const APP_CACHE = 'app-cache-v3';
-const DATA_CACHE = 'data-cache-v3';
+// Service Worker para ESCRITY (Versão 3.0 - Tema Medieval)
+const CACHE_VERSION = 'escry-medieval-v3.1';
+const APP_CACHE = 'app-cache-medieval';
 
 // Arquivos essenciais para cache
 const APP_SHELL_FILES = [
@@ -19,7 +18,7 @@ const APP_SHELL_FILES = [
 
 // Instalação
 self.addEventListener('install', event => {
-  console.log('[Service Worker] Instalando ESCRITY v3.0...');
+  console.log('[Service Worker] Instalando ESCRITY Medieval v3.1...');
   
   event.waitUntil(
     caches.open(APP_CACHE)
@@ -35,7 +34,7 @@ self.addEventListener('install', event => {
 
 // Ativação
 self.addEventListener('activate', event => {
-  console.log('[Service Worker] Ativando ESCRITY v3.0...');
+  console.log('[Service Worker] Ativando ESCRITY Medieval v3.1...');
   
   event.waitUntil(
     Promise.all([
@@ -43,7 +42,7 @@ self.addEventListener('activate', event => {
       caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {
-            if (cacheName !== APP_CACHE && cacheName !== DATA_CACHE) {
+            if (cacheName !== APP_CACHE) {
               console.log('[Service Worker] Removendo cache antigo:', cacheName);
               return caches.delete(cacheName);
             }
@@ -118,9 +117,9 @@ self.addEventListener('fetch', event => {
     fetch(request)
       .then(response => {
         // Armazenar no cache se for bem sucedido
-        if (response.ok) {
+        if (response.ok && request.url.startsWith(self.location.origin)) {
           const responseClone = response.clone();
-          caches.open(DATA_CACHE)
+          caches.open(APP_CACHE)
             .then(cache => cache.put(request, responseClone));
         }
         return response;
@@ -143,7 +142,6 @@ self.addEventListener('message', event => {
       
     case 'CLEAR_CACHE':
       caches.delete(APP_CACHE);
-      caches.delete(DATA_CACHE);
       break;
       
     case 'GET_CACHE_INFO':
@@ -197,13 +195,4 @@ self.addEventListener('notificationclick', event => {
       }
     })
   );
-});
-
-// Background sync para backup
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-backup') {
-    console.log('[Service Worker] Sincronizando backup em background...');
-    // Aqui você poderia sincronizar com um servidor se tivesse
-    event.waitUntil(Promise.resolve());
-  }
 });

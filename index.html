@@ -8,14 +8,18 @@
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap">
-    <meta name="theme-color" content="#1a1a2e">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <meta name="theme-color" content="#5D4037">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ESCRITY">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="msapplication-TileColor" content="#1a1a2e">
+    <meta name="msapplication-TileColor" content="#5D4037">
     <meta name="msapplication-TileImage" content="icons/icon-144x144.png">
+    <!-- Favicon adicionado para resolver erro 503 -->
+    <link rel="icon" href="icons/icon-192x192.png" type="image/png">
     <style>
         * {
             -webkit-tap-highlight-color: transparent;
@@ -64,7 +68,7 @@
             
             <div class="sidebar-content">
                 <div class="section-title">
-                    <h2><i class="fas fa-book-sparkles"></i> Cadernos</h2>
+                    <h2><i class="fas fa-book"></i> Cadernos</h2>
                     <button id="newNotebook" class="btn-icon" title="Novo Caderno">
                         <i class="fas fa-plus"></i>
                     </button>
@@ -88,11 +92,8 @@
                 </div>
                 
                 <div class="sidebar-actions">
-                    <button id="backupBtn" class="btn-action">
-                        <i class="fas fa-box-archive"></i> Backup
-                    </button>
-                    <button id="restoreBtn" class="btn-action">
-                        <i class="fas fa-history"></i> Restaurar
+                    <button id="showPdfModalBtn" class="btn-action">
+                        <i class="fas fa-file-pdf"></i> Sistema de Arquivos
                     </button>
                 </div>
                 
@@ -120,6 +121,11 @@
             <i class="fas fa-plus"></i>
         </button>
 
+        <!-- Botão rotacionar tela mobile -->
+        <button id="rotateScreenBtn" class="mobile-menu-btn" style="left: auto; right: 4.5rem; display: none;" title="Rotacionar">
+            <i class="fas fa-rotate"></i>
+        </button>
+
         <!-- Área principal -->
         <main class="main-area">
             <!-- Área de edição -->
@@ -140,7 +146,7 @@
                             </div>
                             <div class="editor-controls">
                                 <div class="color-picker-container">
-                                    <input type="color" id="textColorPicker" value="#2c3e50" title="Cor do texto">
+                                    <input type="color" id="textColorPicker" value="#3E2723" title="Cor do texto">
                                     <label for="textColorPicker" class="color-picker-label">
                                         <i class="fas fa-fill-drip"></i>
                                     </label>
@@ -157,12 +163,11 @@
                     <div class="editor-tools">
                         <div class="formatting-tools">
                             <div class="tool-group">
-                                <button id="paragraphBtn" title="Parágrafo"><i class="fas fa-paragraph"></i></button>
                                 <button id="boldBtn" title="Negrito"><i class="fas fa-bold"></i></button>
                                 <button id="italicBtn" title="Itálico"><i class="fas fa-italic"></i></button>
                                 <button id="underlineBtn" title="Sublinhado"><i class="fas fa-underline"></i></button>
-                                <button id="highlightBtn" title="Destacar" class="highlight-btn">
-                                    <i class="fas fa-highlighter"></i>
+                                <button id="toggleSpellCheck" class="spellcheck-btn" title="Verificador ortográfico">
+                                    <i class="fas fa-spell-check"></i>
                                 </button>
                             </div>
                             <div class="tool-group">
@@ -181,8 +186,8 @@
                                 <span id="wordCount">0</span>
                                 <span class="counter-label">palavras</span>
                             </div>
-                            <button id="exportBtn" class="btn-export" title="Exportar">
-                                <i class="fas fa-file-export"></i>
+                            <button id="exportSheetPdfBtn" class="btn-export" title="Exportar folha como PDF">
+                                <i class="fas fa-file-pdf"></i>
                             </button>
                             <button id="deleteSheetBtn" class="btn-danger" title="Excluir folha">
                                 <i class="fas fa-trash"></i>
@@ -192,7 +197,7 @@
                 </div>
                 
                 <div class="editor-container">
-                    <div id="editor" contenteditable="true" class="editor-content" spellcheck="true">
+                    <div id="editor" contenteditable="true" class="editor-content" spellcheck="false">
                         <p class="placeholder">Selecione um caderno para começar a escrever...</p>
                     </div>
                 </div>
@@ -314,7 +319,7 @@
     <div id="notebookModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-book-medical"></i> Novo Caderno</h3>
+                <h3><i class="fas fa-book"></i> Novo Caderno</h3>
                 <p class="modal-subtitle">Dê um nome ao seu novo espaço de criação</p>
             </div>
             <div class="modal-body">
@@ -325,19 +330,19 @@
                 <div class="color-selection">
                     <p>Cor do caderno:</p>
                     <div class="color-options">
-                        <div class="color-option active" data-color="#1a1a2e" style="background: #1a1a2e;"></div>
-                        <div class="color-option" data-color="#2c3e50" style="background: #2c3e50;"></div>
-                        <div class="color-option" data-color="#34495e" style="background: #34495e;"></div>
-                        <div class="color-option" data-color="#16a085" style="background: #16a085;"></div>
-                        <div class="color-option" data-color="#27ae60" style="background: #27ae60;"></div>
-                        <div class="color-option" data-color="#8e44ad" style="background: #8e44ad;"></div>
+                        <div class="color-option active" data-color="#5D4037" style="background: #5D4037;"></div>
+                        <div class="color-option" data-color="#795548" style="background: #795548;"></div>
+                        <div class="color-option" data-color="#8D6E63" style="background: #8D6E63;"></div>
+                        <div class="color-option" data-color="#A1887F" style="background: #A1887F;"></div>
+                        <div class="color-option" data-color="#6D4C41" style="background: #6D4C41;"></div>
+                        <div class="color-option" data-color="#4E342E" style="background: #4E342E;"></div>
                     </div>
                 </div>
             </div>
             <div class="modal-actions">
                 <button id="cancelNotebookBtn" class="btn-secondary">Cancelar</button>
                 <button id="createNotebookBtn" class="btn-primary">
-                    <i class="fas fa-sparkles"></i> Criar Caderno
+                    <i class="fas fa-feather-alt"></i> Criar Caderno
                 </button>
             </div>
         </div>
@@ -347,7 +352,7 @@
     <div id="sheetModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-file-medical"></i> Nova Folha</h3>
+                <h3><i class="fas fa-file"></i> Nova Folha</h3>
                 <p class="modal-subtitle">Dê um título à sua nova página</p>
             </div>
             <div class="modal-body">
@@ -413,12 +418,12 @@
                 <div class="customization-section">
                     <h4><i class="fas fa-tint"></i> Tom da Página</h4>
                     <div class="color-palette">
-                        <div class="color-tone active" data-tone="#ffffff" style="background: #ffffff;"></div>
-                        <div class="color-tone" data-tone="#f8f5e9" style="background: #f8f5e9;"></div>
-                        <div class="color-tone" data-tone="#f0f0f0" style="background: #f0f0f0;"></div>
-                        <div class="color-tone" data-tone="#1a1a2e" style="background: #1a1a2e;"></div>
-                        <div class="color-tone" data-tone="#2d3436" style="background: #2d3436;"></div>
-                        <div class="color-tone" data-tone="#fef9e7" style="background: #fef9e7;"></div>
+                        <div class="color-tone active" data-tone="#F5F0E6" style="background: #F5F0E6;"></div>
+                        <div class="color-tone" data-tone="#F8F5E9" style="background: #F8F5E9;"></div>
+                        <div class="color-tone" data-tone="#FFF8DC" style="background: #FFF8DC;"></div>
+                        <div class="color-tone" data-tone="#FAF0E6" style="background: #FAF0E6;"></div>
+                        <div class="color-tone" data-tone="#FDF5E6" style="background: #FDF5E6;"></div>
+                        <div class="color-tone" data-tone="#FFFAF0" style="background: #FFFAF0;"></div>
                     </div>
                 </div>
                 
@@ -452,11 +457,11 @@
                 <div class="font-section">
                     <h4><i class="fas fa-font"></i> Tipografia</h4>
                     <div class="font-grid">
-                        <div class="font-option" data-font="'Crimson Pro', serif">
+                        <div class="font-option active" data-font="'Crimson Pro', serif">
                             <div class="font-preview crimson">Aa</div>
                             <span>Crimson</span>
                         </div>
-                        <div class="font-option active" data-font="'Inter', sans-serif">
+                        <div class="font-option" data-font="'Inter', sans-serif">
                             <div class="font-preview inter">Aa</div>
                             <span>Inter</span>
                         </div>
@@ -539,53 +544,6 @@
         </div>
     </div>
 
-    <!-- Modal de exportação -->
-    <div id="exportModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-file-export"></i> Exportar Caderno</h3>
-                <p class="modal-subtitle">Salve todo o caderno em diferentes formatos</p>
-            </div>
-            <div class="modal-body">
-                <div class="export-options">
-                    <div class="export-option" data-format="pdf">
-                        <i class="fas fa-file-pdf"></i>
-                        <div>
-                            <h4>PDF</h4>
-                            <p>Formato universal para leitura</p>
-                        </div>
-                    </div>
-                    <div class="export-option active" data-format="txt">
-                        <i class="fas fa-file-alt"></i>
-                        <div>
-                            <h4>Texto Simples</h4>
-                            <p>Compatível com qualquer editor</p>
-                        </div>
-                    </div>
-                    <div class="export-option" data-format="html">
-                        <i class="fas fa-code"></i>
-                        <div>
-                            <h4>HTML</h4>
-                            <p>Preserva formatação e imagens</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="export-settings">
-                    <label>
-                        <input type="checkbox" id="includeMetadata" checked>
-                        Incluir metadados (data, título, contagem)
-                    </label>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button id="cancelExportBtn" class="btn-secondary">Cancelar</button>
-                <button id="confirmExportBtn" class="btn-primary">
-                    <i class="fas fa-download"></i> Exportar Caderno
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal de capa -->
     <div id="coverModal" class="modal">
         <div class="modal-content">
@@ -626,73 +584,46 @@
         </div>
     </div>
 
-    <!-- Modal de backup -->
-    <div id="backupModal" class="modal">
+    <!-- Modal de PDF atualizado -->
+    <div id="pdfModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-box-archive"></i> Sistema de Backup</h3>
-                <p class="modal-subtitle">Proteja suas histórias com cópias de segurança</p>
+                <h3><i class="fas fa-file-pdf"></i> Sistema de Arquivos</h3>
+                <p class="modal-subtitle">Gerencie seus dados através de arquivos</p>
             </div>
             <div class="modal-body">
-                <div class="backup-options">
-                    <div class="backup-option" data-action="create">
-                        <i class="fas fa-save"></i>
+                <div class="pdf-options">
+                    <div class="pdf-option" data-action="download-all">
+                        <i class="fas fa-download"></i>
                         <div>
-                            <h4>Criar Backup</h4>
-                            <p>Salve uma cópia de segurança agora</p>
+                            <h4>Exportar Tudo (PDF)</h4>
+                            <p>Salve todos os seus cadernos em um único PDF</p>
                         </div>
                     </div>
-                    <div class="backup-option" data-action="restore">
-                        <i class="fas fa-history"></i>
+                    <div class="pdf-option" data-action="download-json">
+                        <i class="fas fa-file-code"></i>
                         <div>
-                            <h4>Restaurar</h4>
-                            <p>Recupere de um backup anterior</p>
+                            <h4>Exportar Backup (JSON)</h4>
+                            <p>Formato ideal para backup e restauração</p>
                         </div>
                     </div>
-                    <div class="backup-option" data-action="manage">
-                        <i class="fas fa-folder-open"></i>
+                    <div class="pdf-option" data-action="upload">
+                        <i class="fas fa-upload"></i>
                         <div>
-                            <h4>Gerenciar</h4>
-                            <p>Veja e organize seus backups</p>
+                            <h4>Importar Backup</h4>
+                            <p>Carregue um backup JSON exportado anteriormente</p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="backup-info" id="backupInfo">
-                    <p><i class="fas fa-info-circle"></i> Backups são salvos automaticamente a cada 24 horas</p>
+                <div class="pdf-info">
+                    <p><i class="fas fa-info-circle"></i> <strong>PDF:</strong> Ideal para leitura e compartilhamento</p>
+                    <p><i class="fas fa-info-circle"></i> <strong>JSON:</strong> Ideal para backup e restauração completa</p>
                     <p><i class="fas fa-shield-alt"></i> Seus dados permanecem apenas neste dispositivo</p>
                 </div>
             </div>
             <div class="modal-actions">
-                <button id="cancelBackupBtn" class="btn-secondary">Fechar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de restauração -->
-    <div id="restoreModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-history"></i> Restaurar Backup</h3>
-                <p class="modal-subtitle">Selecione um backup para restaurar</p>
-            </div>
-            <div class="modal-body">
-                <div class="backups-list" id="backupsList">
-                    <!-- Backups serão listados aqui -->
-                    <div class="empty-state">
-                        <i class="fas fa-history"></i>
-                        <p>Nenhum backup encontrado</p>
-                    </div>
-                </div>
-                <div class="restore-warning">
-                    <p><i class="fas fa-exclamation-triangle"></i> A restauração substituirá todos os dados atuais</p>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button id="cancelRestoreBtn" class="btn-secondary">Cancelar</button>
-                <button id="confirmRestoreBtn" class="btn-primary" disabled>
-                    <i class="fas fa-history"></i> Restaurar
-                </button>
+                <button id="cancelPdfBtn" class="btn-secondary">Fechar</button>
             </div>
         </div>
     </div>
@@ -727,6 +658,9 @@
     <!-- Audio player -->
     <audio id="audioPlayer" hidden></audio>
 
+    <!-- Input para upload de arquivos -->
+    <input type="file" id="fileUpload" accept=".pdf,.json" hidden>
+
     <script src="script.js"></script>
     <script>
     // Configurações de Service Worker
@@ -757,6 +691,16 @@
     function fixMobileHeight() {
         const vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
+        
+        // Mostrar botão de rotacionar apenas em mobile
+        const rotateBtn = document.getElementById('rotateScreenBtn');
+        if (rotateBtn) {
+            if (window.innerWidth <= 992) {
+                rotateBtn.style.display = 'flex';
+            } else {
+                rotateBtn.style.display = 'none';
+            }
+        }
     }
     
     window.addEventListener('resize', fixMobileHeight);
@@ -776,6 +720,20 @@
     // Prevenir gestos de zoom
     document.addEventListener('gesturestart', function (e) {
         e.preventDefault();
+    });
+    
+    // Rotacionar tela em mobile
+    document.getElementById('rotateScreenBtn')?.addEventListener('click', function() {
+        if (screen.orientation) {
+            screen.orientation.lock(screen.orientation.type.includes('portrait') ? 'landscape' : 'portrait')
+                .catch(err => {
+                    console.log('Erro ao rotacionar:', err);
+                    // Fallback para alerta
+                    alert('Para rotacionar, use a rotação automática do dispositivo ou bloqueio de rotação no menu rápido.');
+                });
+        } else {
+            alert('Para rotacionar, use a rotação automática do dispositivo ou bloqueio de rotação no menu rápido.');
+        }
     });
     </script>
 </body>
